@@ -8,7 +8,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Trash2, Type, Hash, List, ToggleLeft, CalendarDays, X } from "lucide-react";
+import { Plus, Trash2, Type, Hash, List, ToggleLeft, CalendarDays, X, AlertTriangle } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { toast } from "sonner";
 
 const fieldTypeConfig: Record<string, { icon: typeof Type; label: string; color: string }> = {
   text: { icon: Type, label: "Text", color: "text-blue-500 bg-blue-500/10 border-blue-500/20" },
@@ -81,6 +83,7 @@ export function DynamicFieldsSettings() {
   const [fields, setFields] = useState<FieldDefinition[]>([]);
   const [loading, setLoading] = useState(true);
   const [isAdding, setIsAdding] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<FieldDefinition | null>(null);
   const [optionsInput, setOptionsInput] = useState("");
   const [newField, setNewField] = useState<CreateField>({
     entity_type: "lead",
@@ -129,13 +132,21 @@ export function DynamicFieldsSettings() {
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this field?")) return;
+  const handleDelete = (id: string) => {
+    const field = fields.find((f) => f.id === id);
+    if (field) setDeleteTarget(field);
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
     try {
-      await api.fields.delete(id);
-      setFields(fields.filter((f) => f.id !== id));
+      await api.fields.delete(deleteTarget.id);
+      setFields(fields.filter((f) => f.id !== deleteTarget.id));
+      toast.success(`Field "${deleteTarget.label}" deleted successfully.`);
     } catch (error) {
-      console.error("Failed to delete field:", error);
+      toast.error("Failed to delete field", { description: (error as Error).message });
+    } finally {
+      setDeleteTarget(null);
     }
   };
 
@@ -245,6 +256,25 @@ export function DynamicFieldsSettings() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Delete confirmation dialog */}
+      <Dialog open={deleteTarget !== null} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-destructive" />
+              Delete Field
+            </DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete the field <strong>&quot;{deleteTarget?.label}&quot;</strong> ({deleteTarget?.field_name})? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteTarget(null)}>Cancel</Button>
+            <Button variant="destructive" onClick={confirmDelete}>Delete</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Add field modal */}
       {isAdding && (
