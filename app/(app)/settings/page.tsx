@@ -3,7 +3,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { api } from "@/lib/api";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState, useTransition } from "react";
 import { cn } from "@/lib/utils";
 
 type Connection = {
@@ -47,15 +47,26 @@ export default function SettingsPage() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
-  useEffect(() => {
-    Promise.all([
-      api.integrations.connections.list().catch(() => []),
-      api.users.list().then(res => (res as any).data ?? res).catch(() => [])
-    ]).then(([connectionsList, usersList]) => {
-      setConnections(connectionsList);
-      setUsers(usersList as any[]);
-    }).finally(() => setLoading(false));
+  const [, startTransition] = useTransition();
+
+  const fetchData = useCallback(() => {
+    startTransition(async () => {
+      try {
+        const [connectionsList, usersList] = await Promise.all([
+          api.integrations.connections.list().catch(() => []),
+          api.users.list().then(res => (res as any).data ?? res).catch(() => [])
+        ]);
+        setConnections(connectionsList);
+        setUsers(usersList as any[]);
+      } finally {
+        setLoading(false);
+      }
+    });
   }, []);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
   const handleCreateUser = async () => {
     try {

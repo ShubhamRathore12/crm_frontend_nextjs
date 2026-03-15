@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState, useTransition } from "react";
 import {
   Search,
   Inbox as InboxIcon,
@@ -37,14 +37,23 @@ export default function InboxPage() {
   const [detailLoading, setDetailLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
 
-  const fetchEmails = () => {
+  const [, startTransition] = useTransition();
+
+  const fetchEmails = useCallback(() => {
     setLoading(true);
-    api.emails.list().then(setEmails).finally(() => setLoading(false));
-  };
+    startTransition(async () => {
+      try {
+        const data = await api.emails.list();
+        setEmails(data);
+      } finally {
+        setLoading(false);
+      }
+    });
+  }, []);
 
   useEffect(() => {
     fetchEmails();
-  }, []);
+  }, [fetchEmails]);
 
   useEffect(() => {
     if (selectedId) {

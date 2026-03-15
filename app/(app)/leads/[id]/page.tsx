@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState, useTransition } from "react";
 import { useParams } from "next/navigation";
 import { api } from "@/lib/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,20 +10,76 @@ import { AttachmentList } from "@/components/shared/attachment-list";
 import { ChevronLeft, Mail, Phone, MapPin, User, Calendar } from "lucide-react";
 import Link from "next/link";
 
+function DetailSkeleton() {
+  return (
+    <div className="p-4 md:p-6 space-y-6 max-w-7xl mx-auto">
+      <div className="flex items-center gap-4">
+        <div className="h-9 w-9 rounded animate-shimmer" />
+        <div className="space-y-2">
+          <div className="h-7 w-48 rounded animate-shimmer" />
+          <div className="h-4 w-32 rounded animate-shimmer" />
+        </div>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <Card className="md:col-span-2">
+          <CardHeader>
+            <div className="h-5 w-36 rounded animate-shimmer" />
+          </CardHeader>
+          <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-full animate-shimmer" />
+                <div className="space-y-1.5 flex-1">
+                  <div className="h-3 w-16 rounded animate-shimmer" />
+                  <div className="h-4 w-24 rounded animate-shimmer" />
+                </div>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+        <div className="space-y-6">
+          <Card>
+            <CardHeader>
+              <div className="h-4 w-24 rounded animate-shimmer" />
+            </CardHeader>
+            <CardContent className="space-y-2">
+              <div className="h-9 w-full rounded animate-shimmer" />
+              <div className="h-9 w-full rounded animate-shimmer" />
+              <div className="h-9 w-full rounded animate-shimmer" />
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function LeadDetailPage() {
   const { id } = useParams() as { id: string };
   const [lead, setLead] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [, startTransition] = useTransition();
 
-  useEffect(() => {
-    api.leads.get(id).then(setLead).finally(() => setLoading(false));
+  const fetchLead = useCallback(() => {
+    startTransition(async () => {
+      try {
+        const data = await api.leads.get(id);
+        setLead(data);
+      } finally {
+        setLoading(false);
+      }
+    });
   }, [id]);
 
-  if (loading) return <div className="p-8">Loading lead details...</div>;
+  useEffect(() => {
+    fetchLead();
+  }, [fetchLead]);
+
+  if (loading) return <DetailSkeleton />;
   if (!lead) return <div className="p-8 text-destructive">Lead not found.</div>;
 
   return (
-    <div className="p-6 space-y-6 max-w-7xl mx-auto">
+    <div className="p-4 md:p-6 space-y-6 max-w-7xl mx-auto">
       <div className="flex items-center gap-4">
         <Button variant="ghost" size="icon" asChild>
           <Link href="/leads">
@@ -31,7 +87,7 @@ export default function LeadDetailPage() {
           </Link>
         </Button>
         <div>
-          <h1 className="text-2xl font-bold flex items-center gap-3">
+          <h1 className="text-xl md:text-2xl font-bold flex items-center gap-3">
             Lead Details
             <Badge variant="outline">{lead.status}</Badge>
           </h1>
@@ -40,7 +96,6 @@ export default function LeadDetailPage() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {/* Profile Card */}
         <Card className="md:col-span-2">
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
@@ -92,7 +147,6 @@ export default function LeadDetailPage() {
           </CardContent>
         </Card>
 
-        {/* Sidebar Cards */}
         <div className="space-y-6">
           <Card>
             <CardHeader>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState, useTransition } from "react";
 import { useParams } from "next/navigation";
 import { api } from "@/lib/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,16 +10,84 @@ import { AttachmentList } from "@/components/shared/attachment-list";
 import { ChevronLeft, MessageSquare, User, Clock, AlertCircle } from "lucide-react";
 import Link from "next/link";
 
+function DetailSkeleton() {
+  return (
+    <div className="p-4 md:p-6 space-y-6 max-w-7xl mx-auto">
+      <div className="flex items-center gap-4">
+        <div className="h-9 w-9 rounded animate-shimmer" />
+        <div className="space-y-2">
+          <div className="h-7 w-56 rounded animate-shimmer" />
+          <div className="h-4 w-32 rounded animate-shimmer" />
+        </div>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <Card className="md:col-span-2">
+          <CardHeader>
+            <div className="h-5 w-40 rounded animate-shimmer" />
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="p-4 rounded-lg border space-y-2">
+              <div className="h-5 w-48 rounded animate-shimmer" />
+              <div className="h-4 w-32 rounded animate-shimmer" />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              {[1, 2].map((i) => (
+                <div key={i} className="flex items-center gap-3">
+                  <div className="h-4 w-4 rounded animate-shimmer" />
+                  <div className="space-y-1.5">
+                    <div className="h-3 w-14 rounded animate-shimmer" />
+                    <div className="h-4 w-24 rounded animate-shimmer" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+        <div className="space-y-6">
+          <Card>
+            <CardHeader className="pb-2">
+              <div className="h-4 w-28 rounded animate-shimmer" />
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {[1, 2].map((i) => (
+                <div key={i} className="flex items-center gap-3">
+                  <div className="h-8 w-8 rounded-full animate-shimmer" />
+                  <div className="space-y-1.5">
+                    <div className="h-3 w-16 rounded animate-shimmer" />
+                    <div className="h-4 w-20 rounded animate-shimmer" />
+                  </div>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function InteractionDetailPage() {
   const { id } = useParams() as { id: string };
   const [interaction, setInteraction] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [, startTransition] = useTransition();
 
-  useEffect(() => {
-    api.interactions.get(id).then(setInteraction).finally(() => setLoading(false));
+  const fetchInteraction = useCallback(() => {
+    startTransition(async () => {
+      try {
+        const data = await api.interactions.get(id);
+        setInteraction(data);
+      } finally {
+        setLoading(false);
+      }
+    });
   }, [id]);
 
-  if (loading) return <div className="p-8">Loading interaction details...</div>;
+  useEffect(() => {
+    fetchInteraction();
+  }, [fetchInteraction]);
+
+  if (loading) return <DetailSkeleton />;
   if (!interaction) return <div className="p-8 text-destructive">Interaction not found.</div>;
 
   const priorityColor = {
@@ -29,7 +97,7 @@ export default function InteractionDetailPage() {
   }[interaction.priority as "low" | "medium" | "high"] || "bg-muted text-muted-foreground";
 
   return (
-    <div className="p-6 space-y-6 max-w-7xl mx-auto">
+    <div className="p-4 md:p-6 space-y-6 max-w-7xl mx-auto">
       <div className="flex items-center gap-4">
         <Button variant="ghost" size="icon" asChild>
           <Link href="/interactions">
@@ -37,7 +105,7 @@ export default function InteractionDetailPage() {
           </Link>
         </Button>
         <div>
-          <h1 className="text-2xl font-bold flex items-center gap-3">
+          <h1 className="text-xl md:text-2xl font-bold flex items-center gap-3">
             Interaction Details
             <Badge className={priorityColor}>{interaction.priority} Priority</Badge>
           </h1>
@@ -60,7 +128,6 @@ export default function InteractionDetailPage() {
                 Channel: <span className="text-foreground font-medium uppercase">{interaction.channel}</span>
               </p>
             </div>
-            
             <div className="grid grid-cols-2 gap-4">
               <div className="flex items-center gap-3">
                 <Clock className="h-4 w-4 text-muted-foreground" />

@@ -411,8 +411,20 @@ export function DataTable<T extends { id: string }>({
       <Card>
         <CardContent className="p-0">
           {isLoading && data.length === 0 ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="h-6 w-6 animate-spin text-primary" />
+            <div className="p-0">
+              {/* Shimmer table skeleton */}
+              <div className="border-b bg-muted/50 flex gap-4 p-3">
+                {columns.slice(0, 5).map((_, i) => (
+                  <div key={i} className="h-4 flex-1 rounded animate-shimmer" />
+                ))}
+              </div>
+              {Array.from({ length: 6 }).map((_, row) => (
+                <div key={row} className="border-b flex gap-4 p-3">
+                  {columns.slice(0, 5).map((_, col) => (
+                    <div key={col} className="h-4 flex-1 rounded animate-shimmer" style={{ animationDelay: `${row * 0.05}s` }} />
+                  ))}
+                </div>
+              ))}
             </div>
           ) : data.length === 0 ? (
             <div className="text-center py-12 text-muted-foreground">{emptyMessage}</div>

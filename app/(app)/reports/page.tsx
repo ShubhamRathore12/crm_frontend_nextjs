@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState, useTransition } from "react";
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -47,35 +47,84 @@ ChartJS.register(
   Filler
 );
 
+function ReportsSkeleton() {
+  return (
+    <div className="p-4 md:p-6 space-y-4 md:space-y-6 flex flex-col h-full">
+      <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3 bg-background/50 p-3 md:p-4 rounded-xl border">
+        <div className="flex items-center gap-3">
+          <div className="h-10 w-10 rounded-full animate-shimmer" />
+          <div className="space-y-1.5">
+            <div className="h-6 w-48 rounded animate-shimmer" />
+            <div className="h-3 w-32 rounded animate-shimmer" />
+          </div>
+        </div>
+        <div className="flex gap-2">
+          <div className="h-8 w-24 rounded-md animate-shimmer" />
+          <div className="h-8 w-20 rounded-md animate-shimmer" />
+          <div className="h-8 w-28 rounded-md animate-shimmer" />
+        </div>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {[1, 2, 3, 4].map((i) => (
+          <Card key={i} className="border-none shadow-xl shadow-black/5">
+            <CardContent className="p-6 space-y-3">
+              <div className="flex justify-between">
+                <div className="h-10 w-10 rounded-xl animate-shimmer" />
+                <div className="h-5 w-12 rounded animate-shimmer" />
+              </div>
+              <div className="h-8 w-16 rounded animate-shimmer" />
+              <div className="h-3 w-20 rounded animate-shimmer" />
+              <div className="h-1 w-full rounded-full animate-shimmer" />
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <Card className="lg:col-span-2 border-none shadow-xl shadow-black/5">
+          <CardHeader><div className="h-5 w-40 rounded animate-shimmer" /></CardHeader>
+          <CardContent><div className="h-[300px] rounded animate-shimmer" /></CardContent>
+        </Card>
+        <Card className="border-none shadow-xl shadow-black/5">
+          <CardHeader><div className="h-5 w-32 rounded animate-shimmer" /></CardHeader>
+          <CardContent><div className="h-[300px] rounded animate-shimmer" /></CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
 export default function ReportsPage() {
   const [overall, setOverall] = useState<OverallStats | null>(null);
   const [leadStats, setLeadStats] = useState<LeadStats | null>(null);
   const [interactionStats, setInteractionStats] = useState<InteractionStats | null>(null);
   const [oppStats, setOppStats] = useState<OpportunityStats | null>(null);
   const [loading, setLoading] = useState(true);
+  const [, startTransition] = useTransition();
 
-  useEffect(() => {
-    Promise.all([
-      api.analytics.overall(),
-      api.analytics.leads(),
-      api.analytics.interactions(),
-      api.analytics.opportunities(),
-    ]).then(([ov, ls, is, os]) => {
-      setOverall(ov);
-      setLeadStats(ls);
-      setInteractionStats(is);
-      setOppStats(os);
-    }).finally(() => setLoading(false));
+  const fetchData = useCallback(() => {
+    startTransition(async () => {
+      try {
+        const [ov, ls, is, os] = await Promise.all([
+          api.analytics.overall().catch(() => null),
+          api.analytics.leads().catch(() => null),
+          api.analytics.interactions().catch(() => null),
+          api.analytics.opportunities().catch(() => null),
+        ]);
+        if (ov) setOverall(ov);
+        if (ls) setLeadStats(ls);
+        if (is) setInteractionStats(is);
+        if (os) setOppStats(os);
+      } finally {
+        setLoading(false);
+      }
+    });
   }, []);
 
-  if (loading) {
-    return (
-      <div className="p-6 h-full flex flex-col items-center justify-center space-y-4">
-        <div className="h-12 w-12 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-        <p className="text-sm font-bold uppercase tracking-widest text-muted-foreground animate-pulse">Aggregating CRM Intelligence...</p>
-      </div>
-    );
-  }
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  if (loading) return <ReportsSkeleton />;
 
   // Chart Data Preparation
   const leadGrowthData = {

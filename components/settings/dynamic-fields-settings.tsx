@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useTransition, useOptimistic, useCallback } from "react";
 import { api, FieldDefinition, CreateField } from "@/lib/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -8,10 +8,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Trash2, Type, Hash, List, ToggleLeft, CalendarDays, X, AlertTriangle } from "lucide-react";
+import { Plus, Trash2, Type, Hash, List, ToggleLeft, CalendarDays, X, AlertTriangle, Loader2 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
 
+// ── Field type config ───────────────────────────────────────────────────────
 const fieldTypeConfig: Record<string, { icon: typeof Type; label: string; color: string }> = {
   text: { icon: Type, label: "Text", color: "text-blue-500 bg-blue-500/10 border-blue-500/20" },
   number: { icon: Hash, label: "Number", color: "text-green-500 bg-green-500/10 border-green-500/20" },
@@ -26,13 +27,71 @@ const entityTypes = [
   { value: "opportunity", label: "Opportunity", color: "text-purple-600" },
 ];
 
-function FieldCard({ field, onDelete }: { field: FieldDefinition; onDelete: (id: string) => void }) {
+// ── Shimmer Skeleton ────────────────────────────────────────────────────────
+function FieldCardSkeleton() {
+  return (
+    <div className="flex items-start gap-2.5 p-2.5 md:p-3 rounded-lg border bg-card">
+      <div className="h-7 w-7 rounded-md animate-shimmer shrink-0" />
+      <div className="flex-1 space-y-2">
+        <div className="h-4 w-3/4 rounded animate-shimmer" />
+        <div className="h-3 w-1/2 rounded animate-shimmer" />
+        <div className="flex gap-1">
+          <div className="h-4 w-10 rounded animate-shimmer" />
+          <div className="h-4 w-10 rounded animate-shimmer" />
+          <div className="h-4 w-10 rounded animate-shimmer" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function StatSkeleton() {
+  return (
+    <div className="rounded-lg border p-2.5 md:p-3 flex flex-col items-center gap-1.5">
+      <div className="h-7 w-10 rounded animate-shimmer" />
+      <div className="h-3 w-16 rounded animate-shimmer" />
+    </div>
+  );
+}
+
+function FieldsColumnSkeleton({ color }: { color: string }) {
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between">
+          <div className="h-4 w-24 rounded animate-shimmer" />
+          <div className="h-5 w-6 rounded animate-shimmer" />
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-2">
+        <FieldCardSkeleton />
+        <FieldCardSkeleton />
+        <FieldCardSkeleton />
+      </CardContent>
+    </Card>
+  );
+}
+
+// ── Field Card ──────────────────────────────────────────────────────────────
+function FieldCard({
+  field,
+  onDelete,
+  isDeleting,
+}: {
+  field: FieldDefinition;
+  onDelete: (id: string) => void;
+  isDeleting?: boolean;
+}) {
   const typeConfig = fieldTypeConfig[field.field_type] || fieldTypeConfig.text;
   const TypeIcon = typeConfig.icon;
   const options = Array.isArray(field.options) ? (field.options as string[]) : null;
 
   return (
-    <div className="flex items-start justify-between gap-2 p-2.5 md:p-3 rounded-lg border bg-card hover:bg-muted/20 transition-colors">
+    <div
+      className={`flex items-start justify-between gap-2 p-2.5 md:p-3 rounded-lg border bg-card hover:bg-muted/20 transition-all duration-300 ${
+        isDeleting ? "opacity-40 scale-95 pointer-events-none" : "opacity-100 scale-100"
+      }`}
+    >
       <div className="flex items-start gap-2.5 min-w-0 flex-1">
         <div className={`p-1.5 rounded-md shrink-0 ${typeConfig.color}`}>
           <TypeIcon className="h-3.5 w-3.5" />
@@ -46,7 +105,7 @@ function FieldCard({ field, onDelete }: { field: FieldDefinition; onDelete: (id:
           </div>
           <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
             <span className="text-[10px] text-muted-foreground font-mono">{field.field_name}</span>
-            <span className="text-[10px] text-muted-foreground">•</span>
+            <span className="text-[10px] text-muted-foreground">&bull;</span>
             <Badge variant="outline" className={`text-[10px] py-0 px-1.5 ${typeConfig.color}`}>
               {typeConfig.label}
             </Badge>
@@ -79,6 +138,7 @@ function FieldCard({ field, onDelete }: { field: FieldDefinition; onDelete: (id:
   );
 }
 
+// ── Main Component ──────────────────────────────────────────────────────────
 export function DynamicFieldsSettings() {
   const [fields, setFields] = useState<FieldDefinition[]>([]);
   const [loading, setLoading] = useState(true);
@@ -94,7 +154,18 @@ export function DynamicFieldsSettings() {
     display_order: 0,
   });
 
-  const fetchFields = async () => {
+  // React 19: useTransition for non-blocking delete & create
+  const [isDeletePending, startDeleteTransition] = useTransition();
+  const [isCreatePending, startCreateTransition] = useTransition();
+
+  // React 19: useOptimistic for instant UI feedback on delete
+  const [optimisticFields, removeOptimistic] = useOptimistic(
+    fields,
+    (currentFields: FieldDefinition[], deletedId: string) =>
+      currentFields.filter((f) => f.id !== deletedId)
+  );
+
+  const fetchFields = useCallback(async () => {
     try {
       const res = await api.fields.list();
       const data = Array.isArray(res) ? res : (res as any).data ?? [];
@@ -102,52 +173,67 @@ export function DynamicFieldsSettings() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchFields();
-  }, []);
+  }, [fetchFields]);
 
-  const handleAddField = async () => {
-    try {
-      const body: CreateField = { ...newField };
-      if (newField.field_type === "select" && optionsInput.trim()) {
-        body.options = optionsInput.split(",").map((o) => o.trim()).filter(Boolean);
+  // ── Create field with useTransition ─────────────────────────────────────
+  const handleAddField = () => {
+    startCreateTransition(async () => {
+      try {
+        const body: CreateField = { ...newField };
+        if (newField.field_type === "select" && optionsInput.trim()) {
+          body.options = optionsInput.split(",").map((o) => o.trim()).filter(Boolean);
+        }
+        body.display_order = fields.length + 1;
+        await api.fields.create(body);
+        setIsAdding(false);
+        setNewField({
+          entity_type: "lead",
+          field_name: "",
+          label: "",
+          field_type: "text",
+          is_required: false,
+          display_order: 0,
+        });
+        setOptionsInput("");
+        toast.success(`Field "${body.label}" created successfully.`);
+        await fetchFields();
+      } catch (error) {
+        toast.error("Failed to add field", { description: (error as Error).message });
       }
-      body.display_order = fields.length + 1;
-      await api.fields.create(body);
-      setIsAdding(false);
-      setNewField({
-        entity_type: "lead",
-        field_name: "",
-        label: "",
-        field_type: "text",
-        is_required: false,
-        display_order: 0,
-      });
-      setOptionsInput("");
-      fetchFields();
-    } catch (error) {
-      console.error("Failed to add field:", error);
-    }
+    });
   };
 
+  // ── Delete: open dialog ─────────────────────────────────────────────────
   const handleDelete = (id: string) => {
     const field = fields.find((f) => f.id === id);
     if (field) setDeleteTarget(field);
   };
 
-  const confirmDelete = async () => {
+  // ── Confirm delete with useOptimistic + useTransition ───────────────────
+  const confirmDelete = () => {
     if (!deleteTarget) return;
-    try {
-      await api.fields.delete(deleteTarget.id);
-      setFields(fields.filter((f) => f.id !== deleteTarget.id));
-      toast.success(`Field "${deleteTarget.label}" deleted successfully.`);
-    } catch (error) {
-      toast.error("Failed to delete field", { description: (error as Error).message });
-    } finally {
-      setDeleteTarget(null);
-    }
+    const target = deleteTarget;
+    setDeleteTarget(null);
+
+    startDeleteTransition(async () => {
+      // Optimistically remove from UI immediately
+      removeOptimistic(target.id);
+
+      try {
+        await api.fields.delete(target.id);
+        // Sync actual state
+        setFields((prev) => prev.filter((f) => f.id !== target.id));
+        toast.success(`Field "${target.label}" deleted successfully.`);
+      } catch (error) {
+        // Revert: refetch on failure
+        toast.error("Failed to delete field", { description: (error as Error).message });
+        await fetchFields();
+      }
+    });
   };
 
   // Auto-generate field_name from label
@@ -156,17 +242,38 @@ export function DynamicFieldsSettings() {
     setNewField({ ...newField, label, field_name: fieldName });
   };
 
+  // ── Shimmer loading state ─────────────────────────────────────────────
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-12 text-muted-foreground">
-        Loading field definitions...
+      <div className="space-y-4 md:space-y-6">
+        <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3">
+          <div className="space-y-2">
+            <div className="h-5 w-32 rounded animate-shimmer" />
+            <div className="h-3 w-64 rounded animate-shimmer" />
+          </div>
+          <div className="h-9 w-24 rounded-md animate-shimmer" />
+        </div>
+
+        <div className="grid grid-cols-3 gap-2 md:gap-4">
+          <StatSkeleton />
+          <StatSkeleton />
+          <StatSkeleton />
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+          <FieldsColumnSkeleton color="blue" />
+          <FieldsColumnSkeleton color="emerald" />
+          <FieldsColumnSkeleton color="purple" />
+        </div>
       </div>
     );
   }
 
-  const leadFields = fields.filter((f) => f.entity_type === "lead").sort((a, b) => a.display_order - b.display_order);
-  const contactFields = fields.filter((f) => f.entity_type === "contact").sort((a, b) => a.display_order - b.display_order);
-  const opportunityFields = fields.filter((f) => f.entity_type === "opportunity").sort((a, b) => a.display_order - b.display_order);
+  // Use optimistic fields for rendering (instant delete feedback)
+  const displayFields = optimisticFields;
+  const leadFields = displayFields.filter((f) => f.entity_type === "lead").sort((a, b) => a.display_order - b.display_order);
+  const contactFields = displayFields.filter((f) => f.entity_type === "contact").sort((a, b) => a.display_order - b.display_order);
+  const opportunityFields = displayFields.filter((f) => f.entity_type === "opportunity").sort((a, b) => a.display_order - b.display_order);
 
   return (
     <div className="space-y-4 md:space-y-6">
@@ -185,9 +292,9 @@ export function DynamicFieldsSettings() {
       {/* Summary stats */}
       <div className="grid grid-cols-3 gap-2 md:gap-4">
         {entityTypes.map((et) => {
-          const count = fields.filter((f) => f.entity_type === et.value).length;
+          const count = displayFields.filter((f) => f.entity_type === et.value).length;
           return (
-            <div key={et.value} className="rounded-lg border p-2.5 md:p-3 text-center">
+            <div key={et.value} className="rounded-lg border p-2.5 md:p-3 text-center transition-all duration-300">
               <div className="text-lg md:text-2xl font-bold">{count}</div>
               <div className={`text-[10px] md:text-xs font-medium uppercase tracking-wider ${et.color}`}>
                 {et.label} Fields
@@ -213,7 +320,7 @@ export function DynamicFieldsSettings() {
             {leadFields.length === 0 ? (
               <p className="text-sm text-muted-foreground italic text-center py-4">No lead fields defined</p>
             ) : (
-              leadFields.map((f) => <FieldCard key={f.id} field={f} onDelete={handleDelete} />)
+              leadFields.map((f) => <FieldCard key={f.id} field={f} onDelete={handleDelete} isDeleting={isDeletePending && !optimisticFields.some((o) => o.id === f.id)} />)
             )}
           </CardContent>
         </Card>
@@ -232,7 +339,7 @@ export function DynamicFieldsSettings() {
             {contactFields.length === 0 ? (
               <p className="text-sm text-muted-foreground italic text-center py-4">No contact fields defined</p>
             ) : (
-              contactFields.map((f) => <FieldCard key={f.id} field={f} onDelete={handleDelete} />)
+              contactFields.map((f) => <FieldCard key={f.id} field={f} onDelete={handleDelete} isDeleting={isDeletePending && !optimisticFields.some((o) => o.id === f.id)} />)
             )}
           </CardContent>
         </Card>
@@ -251,7 +358,7 @@ export function DynamicFieldsSettings() {
             {opportunityFields.length === 0 ? (
               <p className="text-sm text-muted-foreground italic text-center py-4">No opportunity fields defined</p>
             ) : (
-              opportunityFields.map((f) => <FieldCard key={f.id} field={f} onDelete={handleDelete} />)
+              opportunityFields.map((f) => <FieldCard key={f.id} field={f} onDelete={handleDelete} isDeleting={isDeletePending && !optimisticFields.some((o) => o.id === f.id)} />)
             )}
           </CardContent>
         </Card>
@@ -361,9 +468,16 @@ export function DynamicFieldsSettings() {
                 <Button variant="outline" onClick={() => { setIsAdding(false); setOptionsInput(""); }}>Cancel</Button>
                 <Button
                   onClick={handleAddField}
-                  disabled={!newField.label.trim() || !newField.field_name.trim()}
+                  disabled={!newField.label.trim() || !newField.field_name.trim() || isCreatePending}
                 >
-                  Create Field
+                  {isCreatePending ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Creating...
+                    </>
+                  ) : (
+                    "Create Field"
+                  )}
                 </Button>
               </div>
             </CardContent>

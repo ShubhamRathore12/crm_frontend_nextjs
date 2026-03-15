@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState, useTransition } from "react";
 import { api, Opportunity, Lead } from "@/lib/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -16,17 +16,61 @@ const STAGES = [
   { id: "lost", label: "Closed Lost", color: "bg-red-500/10 text-red-500 border-red-500/20" },
 ];
 
+function KanbanSkeleton() {
+  return (
+    <div className="flex gap-4 md:gap-6 h-full min-w-max">
+      {STAGES.map((stage) => (
+        <div key={stage.id} className="w-72 md:w-80 flex flex-col gap-4">
+          <div className="flex items-center justify-between px-2">
+            <div className="h-5 w-20 rounded animate-shimmer" />
+            <div className="h-8 w-8 rounded animate-shimmer" />
+          </div>
+          <div className="flex-1 bg-muted/30 rounded-2xl border border-dashed border-muted-foreground/20 p-3 space-y-3">
+            {[1, 2].map((i) => (
+              <Card key={i} className="border-none shadow-md shadow-black/5">
+                <CardContent className="p-4 space-y-3">
+                  <div className="flex justify-between">
+                    <div className="h-4 w-32 rounded animate-shimmer" />
+                    <div className="h-4 w-10 rounded animate-shimmer" />
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="h-3 w-20 rounded animate-shimmer" />
+                    <div className="h-3 w-20 rounded animate-shimmer" />
+                  </div>
+                  <div className="flex items-center justify-between pt-2 border-t border-muted/50">
+                    <div className="h-6 w-6 rounded-full animate-shimmer" />
+                    <div className="h-7 w-7 rounded-full animate-shimmer" />
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function OpportunitiesPage() {
   const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
   const [loading, setLoading] = useState(true);
+  const [, startTransition] = useTransition();
+
+  const fetchOpportunities = useCallback(() => {
+    startTransition(async () => {
+      try {
+        const res = await api.opportunities.list();
+        const data = Array.isArray(res) ? res : (res as any).data ?? [];
+        setOpportunities(data);
+      } finally {
+        setLoading(false);
+      }
+    });
+  }, []);
 
   useEffect(() => {
-    api.opportunities.list().then((res) => {
-      // Handle both array response and { data: [...] } wrapper
-      const data = Array.isArray(res) ? res : (res as any).data ?? [];
-      setOpportunities(data);
-    }).finally(() => setLoading(false));
-  }, []);
+    fetchOpportunities();
+  }, [fetchOpportunities]);
 
   const getStageOpps = (stageId: string) => opportunities.filter(o => o.stage === stageId);
 
@@ -43,6 +87,7 @@ export default function OpportunitiesPage() {
       </div>
 
       <div className="flex-1 min-h-0 overflow-x-auto pb-4 -mx-4 px-4 md:mx-0 md:px-0">
+        {loading ? <KanbanSkeleton /> : (
         <div className="flex gap-4 md:gap-6 h-full min-w-max">
           {STAGES.map((stage) => (
             <div key={stage.id} className="w-72 md:w-80 flex flex-col gap-4">
@@ -101,6 +146,7 @@ export default function OpportunitiesPage() {
             </div>
           ))}
         </div>
+        )}
       </div>
     </div>
   );

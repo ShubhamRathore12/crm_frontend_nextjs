@@ -3,8 +3,43 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { api, type EmailSend } from "@/lib/api";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState, useTransition } from "react";
 import { Calendar, Mail, CheckCircle, Circle } from "lucide-react";
+
+function CampaignsSkeleton() {
+  return (
+    <div className="p-4 md:p-6 space-y-4 md:space-y-6">
+      <div className="space-y-1.5">
+        <div className="h-6 w-32 rounded animate-shimmer" />
+        <div className="h-4 w-64 rounded animate-shimmer" />
+      </div>
+      {[1, 2, 3].map((i) => (
+        <Card key={i}>
+          <CardHeader>
+            <div className="h-5 w-40 rounded animate-shimmer" />
+            <div className="h-3 w-72 rounded animate-shimmer mt-2" />
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <div className="h-4 w-16 rounded animate-shimmer" />
+                <div className="h-9 w-full rounded animate-shimmer" />
+              </div>
+              <div className="space-y-2">
+                <div className="h-4 w-24 rounded animate-shimmer" />
+                <div className="h-9 w-full rounded animate-shimmer" />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <div className="h-4 w-16 rounded animate-shimmer" />
+              <div className="h-9 w-full rounded animate-shimmer" />
+            </div>
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  );
+}
 
 export default function CampaignsPage() {
   const [toEmail, setToEmail] = useState("");
@@ -19,18 +54,26 @@ export default function CampaignsPage() {
   const [loadingSends, setLoadingSends] = useState(true);
   const [savedCalendlyLink, setSavedCalendlyLink] = useState<string | null>(null);
 
-  useEffect(() => {
-    api.email
-      .sends()
-      .then((res) => setEmailSends(Array.isArray(res) ? res : (res as any).data ?? []))
-      .catch(() => setEmailSends([]))
-      .finally(() => setLoadingSends(false));
+  const [, startTransition] = useTransition();
 
-    api.integrations
-      .calendlyLink()
-      .then((r) => setSavedCalendlyLink(r.link))
-      .catch(() => setSavedCalendlyLink(null));
+  const fetchData = useCallback(() => {
+    startTransition(async () => {
+      try {
+        const res = await api.email.sends();
+        setEmailSends(Array.isArray(res) ? res : (res as any).data ?? []);
+      } catch { setEmailSends([]); }
+      finally { setLoadingSends(false); }
+
+      try {
+        const r = await api.integrations.calendlyLink();
+        setSavedCalendlyLink(r.link);
+      } catch { setSavedCalendlyLink(null); }
+    });
   }, []);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
   const sendMeetingInvite = async () => {
     setMessage(null);
@@ -194,7 +237,16 @@ export default function CampaignsPage() {
         </CardHeader>
         <CardContent>
           {loadingSends ? (
-            <p className="text-muted-foreground">Loading…</p>
+            <div className="space-y-3">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="flex gap-4">
+                  <div className="h-4 w-32 rounded animate-shimmer" />
+                  <div className="h-4 w-40 rounded animate-shimmer" />
+                  <div className="h-4 w-16 rounded animate-shimmer" />
+                  <div className="h-4 w-28 rounded animate-shimmer" />
+                </div>
+              ))}
+            </div>
           ) : emailSends.length === 0 ? (
             <p className="text-muted-foreground">No sent emails yet. Send a meeting invite or single email to see them here.</p>
           ) : (

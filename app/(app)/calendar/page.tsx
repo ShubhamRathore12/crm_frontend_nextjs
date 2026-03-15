@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useTransition } from "react";
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, addMonths, subMonths } from "date-fns";
 import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Clock, Filter, Plus } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,16 +9,78 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { api } from "@/lib/api";
 
+function CalendarSkeleton() {
+  return (
+    <div className="p-4 md:p-6 space-y-4 md:space-y-6 h-full flex flex-col">
+      <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3 bg-background/50 p-3 md:p-4 rounded-xl border">
+        <div className="flex items-center gap-3">
+          <div className="h-10 w-10 rounded-full animate-shimmer" />
+          <div className="space-y-1.5">
+            <div className="h-6 w-40 rounded animate-shimmer" />
+            <div className="h-3 w-28 rounded animate-shimmer hidden sm:block" />
+          </div>
+        </div>
+        <div className="flex gap-2">
+          <div className="h-8 w-8 rounded animate-shimmer" />
+          <div className="h-8 w-16 rounded animate-shimmer" />
+          <div className="h-8 w-8 rounded animate-shimmer" />
+          <div className="h-8 w-24 rounded animate-shimmer" />
+        </div>
+      </div>
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 md:gap-6 flex-1 min-h-0">
+        <div className="lg:col-span-3 rounded-xl border overflow-hidden">
+          <div className="grid grid-cols-7 border-b bg-muted/30">
+            {[1, 2, 3, 4, 5, 6, 7].map((i) => (
+              <div key={i} className="p-3 flex justify-center">
+                <div className="h-3 w-6 rounded animate-shimmer" />
+              </div>
+            ))}
+          </div>
+          <div className="grid grid-cols-7">
+            {Array.from({ length: 35 }).map((_, i) => (
+              <div key={i} className="min-h-[60px] md:min-h-[100px] p-2 border-r border-b">
+                <div className="h-5 w-5 rounded-full animate-shimmer mb-1" />
+                {i % 5 === 0 && <div className="h-4 w-full rounded animate-shimmer mt-1" />}
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="space-y-4">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="p-4 rounded-xl border space-y-2">
+              <div className="h-4 w-20 rounded animate-shimmer" />
+              <div className="h-4 w-32 rounded animate-shimmer" />
+              <div className="h-3 w-24 rounded animate-shimmer" />
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function CalendarPage() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [leads, setLeads] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [, startTransition] = useTransition();
+
+  const fetchLeads = useCallback(() => {
+    startTransition(async () => {
+      try {
+        const res = await api.leads.list();
+        setLeads(res.data ?? []);
+      } finally {
+        setLoading(false);
+      }
+    });
+  }, []);
 
   useEffect(() => {
-    // Fetch leads to show on calendar (based on created_at or next_follow_up if we had one)
-    // For now, using created_at as a placeholder for "Events"
-    api.leads.list().then((res) => setLeads(res.data ?? [])).finally(() => setLoading(false));
-  }, []);
+    fetchLeads();
+  }, [fetchLeads]);
+
+  if (loading) return <CalendarSkeleton />;
 
   const daysInMonth = eachDayOfInterval({
     start: startOfMonth(currentDate),
