@@ -44,7 +44,10 @@ export default function InboxPage() {
     startTransition(async () => {
       try {
         const data = await api.emails.list();
-        setEmails(data);
+        const arr = Array.isArray(data) ? data : (data as any)?.data ?? [];
+        setEmails(arr);
+      } catch {
+        setEmails([]);
       } finally {
         setLoading(false);
       }

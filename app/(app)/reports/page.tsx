@@ -126,12 +126,28 @@ export default function ReportsPage() {
 
   if (loading) return <ReportsSkeleton />;
 
+  // Helper: convert { key: value } object to [{ label, count/value }] array
+  const objectToLabelArray = (obj: Record<string, number> | undefined, valueKey: "count" | "value" = "count") =>
+    obj ? Object.entries(obj).map(([label, v]) => ({ label, count: v, value: v })) : [];
+
+  // Normalize API responses — API may return arrays or { byStatus: {...} } objects
+  const ls = leadStats as any;
+  const growthData = Array.isArray(ls?.growth) ? ls.growth : [];
+  const leadStatusArr = Array.isArray(ls?.by_status) ? ls.by_status : objectToLabelArray(ls?.byStatus);
+  const leadSourceArr = Array.isArray(ls?.by_source) ? ls.by_source : objectToLabelArray(ls?.bySource);
+
+  const os = oppStats as any;
+  const oppStageArr = Array.isArray(os?.by_stage) ? os.by_stage : objectToLabelArray(os?.byStage, "value");
+
+  const is = interactionStats as any;
+  const interactionChannelArr = Array.isArray(is?.by_channel) ? is.by_channel : objectToLabelArray(is?.byChannel);
+
   // Chart Data Preparation
   const leadGrowthData = {
-    labels: leadStats?.growth.map(g => g.label) || [],
+    labels: growthData.length > 0 ? growthData.map((g: any) => g.label) : leadStatusArr.map((s: any) => s.label),
     datasets: [{
       label: "New Leads",
-      data: leadStats?.growth.map(g => g.value) || [],
+      data: growthData.length > 0 ? growthData.map((g: any) => g.value) : leadStatusArr.map((s: any) => s.count),
       fill: true,
       borderColor: "hsl(263.4, 70%, 50.4%)",
       backgroundColor: "hsla(263.4, 70%, 50.4%, 0.1)",
@@ -142,15 +158,18 @@ export default function ReportsPage() {
   };
 
   const leadStatusData = {
-    labels: leadStats?.by_status.map(s => s.label) || [],
+    labels: leadStatusArr.map((s: any) => s.label),
     datasets: [{
-      data: leadStats?.by_status.map(s => s.count) || [],
+      data: leadStatusArr.map((s: any) => s.count),
       backgroundColor: [
         "hsla(263.4, 70%, 50.4%, 0.6)",
         "hsla(142.1, 70.6%, 45.3%, 0.6)",
         "hsla(37.9, 90.2%, 58.2%, 0.6)",
         "hsla(0, 84.2%, 60.2%, 0.6)",
         "hsla(198.6, 88.7%, 48.4%, 0.6)",
+        "hsla(220, 70%, 50%, 0.6)",
+        "hsla(340, 70%, 50%, 0.6)",
+        "hsla(160, 70%, 50%, 0.6)",
       ],
       borderColor: "transparent",
       hoverOffset: 10,
@@ -158,23 +177,26 @@ export default function ReportsPage() {
   };
 
   const oppValueData = {
-    labels: oppStats?.by_stage.map(s => s.label) || [],
+    labels: oppStageArr.map((s: any) => s.label),
     datasets: [{
       label: "Value ($)",
-      data: oppStats?.by_stage.map(s => s.value) || [],
+      data: oppStageArr.map((s: any) => s.value),
       backgroundColor: "hsla(142.1, 70.6%, 45.3%, 0.6)",
       borderRadius: 8,
     }]
   };
 
   const interactionChannelData = {
-    labels: interactionStats?.by_channel.map(c => c.label) || [],
+    labels: interactionChannelArr.map((c: any) => c.label),
     datasets: [{
-      data: interactionStats?.by_channel.map(c => c.count) || [],
+      data: interactionChannelArr.map((c: any) => c.count),
       backgroundColor: [
         "hsla(198.6, 88.7%, 48.4%, 0.6)",
         "hsla(263.4, 70%, 50.4%, 0.6)",
         "hsla(37.9, 90.2%, 58.2%, 0.6)",
+        "hsla(0, 84.2%, 60.2%, 0.6)",
+        "hsla(142.1, 70.6%, 45.3%, 0.6)",
+        "hsla(220, 70%, 50%, 0.6)",
       ],
       borderColor: "transparent",
     }]
@@ -280,7 +302,7 @@ export default function ReportsPage() {
             <div className="relative h-full w-full">
               <Doughnut data={leadStatusData} options={{ ...chartOptions, cutout: '70%', scales: undefined }} />
               <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                <span className="text-3xl font-bold">{leadStats?.total || 0}</span>
+                <span className="text-3xl font-bold">{ls?.total || leadStatusArr.reduce((a: number, b: any) => a + b.count, 0) || 0}</span>
                 <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Total</span>
               </div>
             </div>

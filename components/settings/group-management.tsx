@@ -108,8 +108,10 @@ export function GroupManagement() {
         api.teams.list(),
         api.users.list()
       ]);
-      setTeams(tVisible);
-      setUsers((uVisible as any).data ?? uVisible as any);
+      const teamsData = Array.isArray(tVisible) ? tVisible : (tVisible as any).data ?? [];
+      setTeams(teamsData);
+      const usersData = Array.isArray(uVisible) ? uVisible : (uVisible as any).data ?? [];
+      setUsers(usersData);
     } finally {
       setLoading(false);
     }
