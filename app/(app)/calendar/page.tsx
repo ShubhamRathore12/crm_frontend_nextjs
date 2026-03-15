@@ -90,14 +90,24 @@ export default function CalendarPage() {
                     )}
                   </div>
                   <div className="space-y-0.5 md:space-y-1">
-                    {dayLeads.slice(0, window?.innerWidth < 768 ? 1 : 3).map((lead) => (
-                      <div key={lead.id} className="text-[9px] md:text-[10px] p-1 md:p-1.5 rounded bg-background border shadow-sm truncate hover:border-primary/40 hover:shadow-md transition-all cursor-pointer">
+                    {dayLeads.slice(0, 3).map((lead, idx) => (
+                      <div
+                        key={lead.id}
+                        className={`text-[9px] md:text-[10px] p-1 md:p-1.5 rounded bg-background border shadow-sm truncate hover:border-primary/40 hover:shadow-md transition-all cursor-pointer ${idx >= 1 ? "hidden md:block" : ""}`}
+                      >
                         <span className="hidden md:inline font-semibold text-primary/70">Lead:</span> {lead.contacts?.name || lead.source}
                       </div>
                     ))}
-                    {dayLeads.length > (typeof window !== 'undefined' && window.innerWidth < 768 ? 1 : 3) && (
-                      <div className="text-[9px] text-muted-foreground pl-1 font-medium italic">
-                        +{dayLeads.length - (typeof window !== 'undefined' && window.innerWidth < 768 ? 1 : 3)}
+                    {/* Mobile: show +N if more than 1 */}
+                    {dayLeads.length > 1 && (
+                      <div className="text-[9px] text-muted-foreground pl-1 font-medium italic md:hidden">
+                        +{dayLeads.length - 1}
+                      </div>
+                    )}
+                    {/* Desktop: show +N if more than 3 */}
+                    {dayLeads.length > 3 && (
+                      <div className="text-[9px] text-muted-foreground pl-1 font-medium italic hidden md:block">
+                        +{dayLeads.length - 3}
                       </div>
                     )}
                   </div>
