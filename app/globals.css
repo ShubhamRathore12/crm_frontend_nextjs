@@ -1,0 +1,110 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 220 18% 10%;
+    --card: 0 0% 98%;
+    --card-foreground: 220 18% 10%;
+    --primary: 173 58% 39%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 220 14% 93%;
+    --secondary-foreground: 220 18% 10%;
+    --muted: 220 14% 95%;
+    --muted-foreground: 215 16% 47%;
+    --accent: 173 58% 39%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 62% 50%;
+    --border: 220 14% 88%;
+    --input: 220 14% 88%;
+    --ring: 173 58% 39%;
+    --radius: 0.5rem;
+  }
+
+  .dark {
+    --background: 220 18% 8%;
+    --foreground: 210 20% 98%;
+    --card: 220 16% 12%;
+    --card-foreground: 210 20% 98%;
+    --primary: 173 58% 39%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 220 14% 18%;
+    --secondary-foreground: 210 20% 98%;
+    --muted: 220 14% 16%;
+    --muted-foreground: 215 16% 57%;
+    --accent: 173 58% 39%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 62% 50%;
+    --border: 220 14% 22%;
+    --input: 220 14% 22%;
+    --ring: 173 58% 39%;
+    --radius: 0.5rem;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground antialiased;
+  }
+}
+
+/* Premium Auth Animations */
+@keyframes revealSplash {
+  0% { clip-path: inset(100% 0 0 0); transform: translateY(20px); }
+  100% { clip-path: inset(0 0 0 0); transform: translateY(0); }
+}
+
+@keyframes fadeOut {
+  0% { opacity: 1; }
+  90% { opacity: 1; }
+  100% { opacity: 0; pointer-events: none; }
+}
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes float {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(30px, -40px) scale(1.1); }
+}
+
+.animate-revealSplash {
+  animation: revealSplash 1s cubic-bezier(0.77, 0, 0.175, 1) forwards;
+}
+
+.animate-fadeOut {
+  animation: fadeOut 2s cubic-bezier(0.7, 0, 0.3, 1) forwards;
+}
+
+.animate-fadeInUp {
+  animation: fadeInUp 1s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.animate-fadeIn {
+  animation: fadeIn 2s ease both;
+}
+
+.animate-float {
+  animation: float 10s ease-in-out infinite;
+}
+
+.animate-float-delayed {
+  animation: float 15s ease-in-out infinite reverse;
+  animation-delay: -5s;
+}
+
+.delay-200 {
+  animation-delay: 0.2s;
+}
