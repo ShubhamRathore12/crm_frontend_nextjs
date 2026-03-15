@@ -81,17 +81,17 @@ export default function SalesMarketingPage() {
   return (
     <div className="flex flex-col h-full">
       {/* Page header */}
-      <div className="border-b border-border bg-card/50 px-6 py-4">
-        <div className="flex items-center justify-between">
+      <div className="border-b border-border bg-card/50 px-4 md:px-6 py-3 md:py-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
-            <h1 className="text-xl font-semibold">Sales & Marketing</h1>
-            <p className="text-sm text-muted-foreground mt-0.5">
+            <h1 className="text-lg md:text-xl font-semibold">Sales & Marketing</h1>
+            <p className="text-xs md:text-sm text-muted-foreground mt-0.5">
               Manage campaigns, tasks, and marketing workflows
             </p>
           </div>
           <div className="flex items-center gap-2">
             <Button onClick={loadTasks} variant="outline" size="sm" className="gap-1.5">
-              <RefreshCw className={cn("h-3.5 w-3.5", loading && "animate-spin")} /> Refresh
+              <RefreshCw className={cn("h-3.5 w-3.5", loading && "animate-spin")} /> <span className="hidden sm:inline">Refresh</span>
             </Button>
             <Button onClick={() => handleCreateClick()} size="sm" className="gap-1.5">
               <Plus className="h-3.5 w-3.5" /> New Task
@@ -100,14 +100,14 @@ export default function SalesMarketingPage() {
         </div>
 
         {/* Tabs & Search */}
-        <div className="mt-4 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-0.5 rounded-lg bg-secondary p-0.5">
+        <div className="mt-3 md:mt-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-0.5 rounded-lg bg-secondary p-0.5 overflow-x-auto">
             {tabs.map((tab) => (
               <button
                 key={tab.key}
                 onClick={() => setActiveTab(tab.key)}
                 className={cn(
-                  "flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-all",
+                  "flex items-center gap-1.5 rounded-md px-2.5 md:px-3 py-1.5 text-xs md:text-sm font-medium transition-all shrink-0",
                   activeTab === tab.key
                     ? "bg-primary text-primary-foreground shadow-sm"
                     : "text-muted-foreground hover:text-foreground"
@@ -120,18 +120,18 @@ export default function SalesMarketingPage() {
           </div>
           {activeTab !== "forms" && (
             <div className="flex items-center gap-2">
-              <div className="relative">
+              <div className="relative flex-1 sm:flex-none">
                 <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
                 <input
                   type="text"
                   placeholder="Search tasks..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="rounded-lg border border-input bg-background pl-8 pr-3 py-1.5 text-sm w-56"
+                  className="rounded-lg border border-input bg-background pl-8 pr-3 py-1.5 text-sm w-full sm:w-56"
                 />
               </div>
-              <Button variant="outline" size="sm" className="gap-1.5">
-                <Filter className="h-3.5 w-3.5" /> Filter
+              <Button variant="outline" size="sm" className="gap-1.5 shrink-0">
+                <Filter className="h-3.5 w-3.5" /> <span className="hidden sm:inline">Filter</span>
               </Button>
             </div>
           )}
@@ -139,7 +139,7 @@ export default function SalesMarketingPage() {
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-auto p-6">
+      <div className="flex-1 overflow-auto p-4 md:p-6">
         {loading && tasks.length === 0 ? (
           <div className="flex items-center justify-center py-20">
             <div className="text-center">

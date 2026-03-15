@@ -163,15 +163,15 @@ export default function InteractionsPage() {
   });
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="p-4 md:p-6 space-y-4 md:space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold">Interactions</h1>
-          <p className="text-muted-foreground">
+          <h1 className="text-xl md:text-2xl font-semibold">Interactions</h1>
+          <p className="text-muted-foreground text-sm">
             Lifecycle: New &rarr; Assigned &rarr; In Progress &rarr; Resolved &rarr; Closed
           </p>
         </div>
-        <Button asChild>
+        <Button asChild size="sm" className="md:size-default self-start sm:self-auto">
           <Link href="/interactions/new">
             <Plus className="h-4 w-4 mr-2" />
             New Interaction

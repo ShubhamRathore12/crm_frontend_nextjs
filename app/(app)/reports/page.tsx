@@ -152,30 +152,30 @@ export default function ReportsPage() {
   };
 
   return (
-    <div className="p-6 space-y-6 flex flex-col h-full overflow-y-auto scrollbar-hide">
-      <div className="flex justify-between items-center bg-background/50 p-4 rounded-xl border backdrop-blur-sm shadow-sm">
-        <div className="flex items-center gap-4">
-          <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-primary shadow-inner">
-            <TrendingUp className="h-5 w-5" />
+    <div className="p-4 md:p-6 space-y-4 md:space-y-6 flex flex-col h-full overflow-y-auto scrollbar-hide">
+      <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3 bg-background/50 p-3 md:p-4 rounded-xl border backdrop-blur-sm shadow-sm">
+        <div className="flex items-center gap-3 md:gap-4">
+          <div className="h-9 w-9 md:h-10 md:w-10 rounded-full bg-primary/10 flex items-center justify-center text-primary shadow-inner shrink-0">
+            <TrendingUp className="h-4 w-4 md:h-5 md:w-5" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold tracking-tight">Performance Analytics</h1>
-            <p className="text-xs text-muted-foreground font-medium uppercase tracking-widest">Real-time CRM Intelligence</p>
+            <h1 className="text-xl md:text-2xl font-bold tracking-tight">Performance Analytics</h1>
+            <p className="text-xs text-muted-foreground font-medium uppercase tracking-widest hidden sm:block">Real-time CRM Intelligence</p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <Button variant="outline" size="sm" className="h-8 gap-2 font-medium">
             <Calendar className="h-4 w-4" />
-            <span>Last 30 Days</span>
+            <span className="hidden sm:inline">Last 30 Days</span>
+            <span className="sm:hidden">30d</span>
           </Button>
           <Button variant="outline" size="sm" className="h-8 gap-2 font-medium">
             <Filter className="h-4 w-4" />
-            <span>Filters</span>
+            <span className="hidden sm:inline">Filters</span>
           </Button>
-          <div className="w-px h-6 bg-border mx-2" />
           <Button size="sm" className="h-8 gap-2 bg-primary hover:bg-primary/90 shadow-lg shadow-primary/20">
             <Download className="h-4 w-4" />
-            <span>Export Report</span>
+            <span className="hidden sm:inline">Export Report</span>
           </Button>
         </div>
       </div>

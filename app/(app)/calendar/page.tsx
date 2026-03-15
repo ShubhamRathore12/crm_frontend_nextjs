@@ -29,15 +29,15 @@ export default function CalendarPage() {
   const prevMonth = () => setCurrentDate(subMonths(currentDate, 1));
 
   return (
-    <div className="p-6 space-y-6 h-full flex flex-col">
-      <div className="flex justify-between items-center bg-background/50 p-4 rounded-xl border backdrop-blur-sm">
-        <div className="flex items-center gap-4">
-          <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
-            <CalendarIcon className="h-5 w-5" />
+    <div className="p-4 md:p-6 space-y-4 md:space-y-6 h-full flex flex-col">
+      <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3 bg-background/50 p-3 md:p-4 rounded-xl border backdrop-blur-sm">
+        <div className="flex items-center gap-3 md:gap-4">
+          <div className="h-9 w-9 md:h-10 md:w-10 rounded-full bg-primary/10 flex items-center justify-center text-primary shrink-0">
+            <CalendarIcon className="h-4 w-4 md:h-5 md:w-5" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold tracking-tight">{format(currentDate, "MMMM yyyy")}</h1>
-            <p className="text-xs text-muted-foreground font-medium uppercase tracking-widest">Unified CRM Schedule</p>
+            <h1 className="text-xl md:text-2xl font-bold tracking-tight">{format(currentDate, "MMMM yyyy")}</h1>
+            <p className="text-xs text-muted-foreground font-medium uppercase tracking-widest hidden sm:block">Unified CRM Schedule</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -48,39 +48,39 @@ export default function CalendarPage() {
           <Button variant="outline" size="icon" onClick={nextMonth} className="h-8 w-8 hover:bg-primary/5">
             <ChevronRight className="h-4 w-4" />
           </Button>
-          <div className="w-px h-6 bg-border mx-2" />
-          <Button size="sm" className="h-8 gap-2 bg-primary hover:bg-primary/90 shadow-lg shadow-primary/20">
+          <Button size="sm" className="h-8 gap-2 bg-primary hover:bg-primary/90 shadow-lg shadow-primary/20 ml-auto sm:ml-0">
             <Plus className="h-4 w-4" />
             <span className="hidden sm:inline">Add Event</span>
           </Button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 flex-1 min-h-0">
-        <div className="lg:col-span-3 card-gradient rounded-2xl border bg-card/50 shadow-xl shadow-black/5 overflow-hidden flex flex-col">
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 md:gap-6 flex-1 min-h-0">
+        <div className="lg:col-span-3 card-gradient rounded-xl md:rounded-2xl border bg-card/50 shadow-xl shadow-black/5 overflow-hidden flex flex-col">
           <div className="grid grid-cols-7 border-b bg-muted/30">
-            {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
-              <div key={day} className="p-3 text-center text-[10px] font-bold uppercase tracking-widest text-muted-foreground/70">
-                {day}
+            {["S", "M", "T", "W", "T", "F", "S"].map((day, i) => (
+              <div key={i} className="p-2 md:p-3 text-center text-[10px] font-bold uppercase tracking-widest text-muted-foreground/70">
+                <span className="md:hidden">{day}</span>
+                <span className="hidden md:inline">{["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][i]}</span>
               </div>
             ))}
           </div>
           <div className="grid grid-cols-7 flex-1 min-h-0 divide-x divide-y border-l border-t">
             {Array.from({ length: startOfMonth(currentDate).getDay() }).map((_, i) => (
-              <div key={`empty-${i}`} className="bg-muted/10 p-2 min-h-[100px]" />
+              <div key={`empty-${i}`} className="bg-muted/10 p-1 md:p-2 min-h-[60px] md:min-h-[100px]" />
             ))}
             {daysInMonth.map((day) => {
               const dayLeads = leads.filter(l => isSameDay(new Date(l.created_at), day));
               const isToday = isSameDay(day, new Date());
-              
+
               return (
                 <div key={day.toString()} className={cn(
-                  "min-h-[100px] p-2 hover:bg-primary/5 transition-colors group relative",
+                  "min-h-[60px] md:min-h-[100px] p-1 md:p-2 hover:bg-primary/5 transition-colors group relative",
                   isToday && "bg-primary/5"
                 )}>
-                  <div className="flex justify-between items-start mb-1">
+                  <div className="flex justify-between items-start mb-0.5 md:mb-1">
                     <span className={cn(
-                      "text-sm font-bold w-7 h-7 flex items-center justify-center rounded-full transition-all",
+                      "text-xs md:text-sm font-bold w-6 h-6 md:w-7 md:h-7 flex items-center justify-center rounded-full transition-all",
                       isToday ? "bg-primary text-primary-foreground shadow-md scale-110" : "text-muted-foreground group-hover:text-foreground"
                     )}>
                       {format(day, "d")}
@@ -89,15 +89,15 @@ export default function CalendarPage() {
                       <div className="flex h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
                     )}
                   </div>
-                  <div className="space-y-1">
-                    {dayLeads.slice(0, 3).map((lead) => (
-                      <div key={lead.id} className="text-[10px] p-1.5 rounded bg-background border shadow-sm truncate hover:border-primary/40 hover:shadow-md transition-all cursor-pointer">
-                        <span className="font-semibold text-primary/70">Lead:</span> {lead.contacts?.name || lead.source}
+                  <div className="space-y-0.5 md:space-y-1">
+                    {dayLeads.slice(0, window?.innerWidth < 768 ? 1 : 3).map((lead) => (
+                      <div key={lead.id} className="text-[9px] md:text-[10px] p-1 md:p-1.5 rounded bg-background border shadow-sm truncate hover:border-primary/40 hover:shadow-md transition-all cursor-pointer">
+                        <span className="hidden md:inline font-semibold text-primary/70">Lead:</span> {lead.contacts?.name || lead.source}
                       </div>
                     ))}
-                    {dayLeads.length > 3 && (
+                    {dayLeads.length > (typeof window !== 'undefined' && window.innerWidth < 768 ? 1 : 3) && (
                       <div className="text-[9px] text-muted-foreground pl-1 font-medium italic">
-                        + {dayLeads.length - 3} more
+                        +{dayLeads.length - (typeof window !== 'undefined' && window.innerWidth < 768 ? 1 : 3)}
                       </div>
                     )}
                   </div>

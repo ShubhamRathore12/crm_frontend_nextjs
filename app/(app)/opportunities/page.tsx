@@ -31,21 +31,21 @@ export default function OpportunitiesPage() {
   const getStageOpps = (stageId: string) => opportunities.filter(o => o.stage === stageId);
 
   return (
-    <div className="p-6 space-y-6 h-full flex flex-col">
-      <div className="flex justify-between items-end bg-background/50 p-4 rounded-xl border backdrop-blur-sm shadow-sm">
+    <div className="p-4 md:p-6 space-y-4 md:space-y-6 h-full flex flex-col">
+      <div className="flex flex-col sm:flex-row justify-between sm:items-end gap-3 bg-background/50 p-3 md:p-4 rounded-xl border backdrop-blur-sm shadow-sm">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Opportunities</h1>
-          <p className="text-muted-foreground">Manage your high-value deals and sales pipeline.</p>
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Opportunities</h1>
+          <p className="text-muted-foreground text-sm">Manage your high-value deals and sales pipeline.</p>
         </div>
-        <Button className="gap-2 bg-primary hover:bg-primary/90 shadow-lg shadow-primary/20">
+        <Button size="sm" className="md:size-default gap-2 bg-primary hover:bg-primary/90 shadow-lg shadow-primary/20 self-start sm:self-auto">
           <Plus className="h-4 w-4" /> New Opportunity
         </Button>
       </div>
 
-      <div className="flex-1 min-h-0 overflow-x-auto pb-4">
-        <div className="flex gap-6 h-full min-w-max">
+      <div className="flex-1 min-h-0 overflow-x-auto pb-4 -mx-4 px-4 md:mx-0 md:px-0">
+        <div className="flex gap-4 md:gap-6 h-full min-w-max">
           {STAGES.map((stage) => (
-            <div key={stage.id} className="w-80 flex flex-col gap-4">
+            <div key={stage.id} className="w-72 md:w-80 flex flex-col gap-4">
               <div className="flex items-center justify-between px-2">
                 <div className="flex items-center gap-2">
                   <Badge variant="outline" className={cn("px-2 py-0.5 font-bold uppercase tracking-wider text-[10px]", stage.color)}>

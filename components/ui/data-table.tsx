@@ -386,9 +386,9 @@ export function DataTable<T extends { id: string }>({
     <>
       {/* ---- Global search + filters bar ---- */}
       {(onSearchChange || filters || total !== undefined) && (
-        <div className="flex gap-3 items-center flex-wrap">
+        <div className="flex gap-2 md:gap-3 items-center flex-wrap">
           {onSearchChange && (
-            <div className="relative flex-1 max-w-sm">
+            <div className="relative flex-1 min-w-[180px] max-w-sm">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder={searchPlaceholder}
@@ -400,7 +400,7 @@ export function DataTable<T extends { id: string }>({
           )}
           {filters}
           {total !== undefined && entityLabel && (
-            <span className="text-sm text-muted-foreground">
+            <span className="text-xs md:text-sm text-muted-foreground">
               {total} {entityLabel}
             </span>
           )}
@@ -417,7 +417,7 @@ export function DataTable<T extends { id: string }>({
           ) : data.length === 0 ? (
             <div className="text-center py-12 text-muted-foreground">{emptyMessage}</div>
           ) : (
-            <div className="overflow-auto max-h-[calc(100vh-280px)]">
+            <div className="overflow-auto max-h-[calc(100vh-220px)] md:max-h-[calc(100vh-280px)]">
               <table className="w-full text-sm border-collapse">
                 {/* ---- Header ---- */}
                 <thead className="sticky top-0 z-20">

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
 import {
   LayoutDashboard,
   Users,
@@ -16,6 +17,8 @@ import {
   Inbox as InboxIcon,
   Calendar as CalendarIcon,
   LogOut,
+  Menu,
+  X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
@@ -39,6 +42,24 @@ const nav = [
 export function AppSidebar() {
   const pathname = usePathname();
   const router = useRouter();
+  const [mobileOpen, setMobileOpen] = useState(false);
+
+  // Close mobile menu on route change
+  useEffect(() => {
+    setMobileOpen(false);
+  }, [pathname]);
+
+  // Prevent body scroll when mobile menu is open
+  useEffect(() => {
+    if (mobileOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [mobileOpen]);
 
   const handleLogout = () => {
     localStorage.removeItem("token");
@@ -46,12 +67,18 @@ export function AppSidebar() {
     router.push("/login");
   };
 
-  return (
-    <aside className="w-56 border-r border-border bg-card flex flex-col">
-      <div className="p-4 border-b border-border">
+  const sidebarContent = (
+    <>
+      <div className="p-4 border-b border-border flex items-center justify-between">
         <Link href="/dashboard" className="font-semibold text-lg text-primary">
           CRM
         </Link>
+        <button
+          onClick={() => setMobileOpen(false)}
+          className="md:hidden p-1 rounded-md hover:bg-secondary"
+        >
+          <X className="h-5 w-5" />
+        </button>
       </div>
       <nav className="flex-1 p-2 space-y-0.5 overflow-y-auto">
         {nav.map((item) => {
@@ -83,6 +110,46 @@ export function AppSidebar() {
           Logout
         </button>
       </div>
-    </aside>
+    </>
+  );
+
+  return (
+    <>
+      {/* Mobile top bar */}
+      <div className="md:hidden fixed top-0 left-0 right-0 z-40 h-14 border-b border-border bg-card flex items-center px-4 gap-3">
+        <button
+          onClick={() => setMobileOpen(true)}
+          className="p-1.5 rounded-md hover:bg-secondary"
+        >
+          <Menu className="h-5 w-5" />
+        </button>
+        <Link href="/dashboard" className="font-semibold text-lg text-primary">
+          CRM
+        </Link>
+      </div>
+
+      {/* Mobile overlay */}
+      {mobileOpen && (
+        <div
+          className="md:hidden fixed inset-0 z-50 bg-black/50"
+          onClick={() => setMobileOpen(false)}
+        />
+      )}
+
+      {/* Mobile drawer */}
+      <aside
+        className={cn(
+          "md:hidden fixed top-0 left-0 z-50 h-full w-64 bg-card flex flex-col transition-transform duration-200 ease-in-out",
+          mobileOpen ? "translate-x-0" : "-translate-x-full"
+        )}
+      >
+        {sidebarContent}
+      </aside>
+
+      {/* Desktop sidebar */}
+      <aside className="hidden md:flex w-56 border-r border-border bg-card flex-col shrink-0">
+        {sidebarContent}
+      </aside>
+    </>
   );
 }

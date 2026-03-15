@@ -128,15 +128,15 @@ export default function WorkflowsPage() {
   ];
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="p-4 md:p-6 space-y-4 md:space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold">Workflows</h1>
-          <p className="text-muted-foreground">
+          <h1 className="text-xl md:text-2xl font-semibold">Workflows</h1>
+          <p className="text-muted-foreground text-sm">
             Visual flow builder: Trigger &rarr; Assign &rarr; Send SMS &rarr; Delay &rarr; Escalate
           </p>
         </div>
-        <Button asChild>
+        <Button asChild size="sm" className="md:size-default self-start sm:self-auto">
           <Link href="/workflows/new">
             <Plus className="h-4 w-4 mr-2" />
             New Workflow
@@ -146,7 +146,7 @@ export default function WorkflowsPage() {
 
       {/* Stats */}
       {statsData && (
-        <div className="grid gap-4 md:grid-cols-4">
+        <div className="grid gap-3 md:gap-4 grid-cols-2 md:grid-cols-4">
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">Total</CardTitle>

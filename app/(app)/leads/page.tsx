@@ -207,20 +207,20 @@ export default function LeadsPage() {
   });
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="p-4 md:p-6 space-y-4 md:space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Leads</h1>
-          <p className="text-muted-foreground">
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Leads</h1>
+          <p className="text-muted-foreground text-sm">
             Manage incoming leads, scores, and conversions.
           </p>
         </div>
-        <div className="flex gap-3">
-          <Button variant="outline" onClick={() => setIsUploadModalOpen(true)}>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" className="md:size-default" onClick={() => setIsUploadModalOpen(true)}>
             <Upload className="h-4 w-4 mr-2" />
-            Bulk Import
+            <span className="hidden sm:inline">Bulk </span>Import
           </Button>
-          <Button asChild>
+          <Button asChild size="sm" className="md:size-default">
             <Link href="/leads/new">
               <Plus className="h-4 w-4 mr-2" />
               New Lead

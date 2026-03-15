@@ -135,21 +135,21 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 md:p-6 space-y-4 md:space-y-6">
       <div className="flex justify-between items-end">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Settings</h1>
-          <p className="text-muted-foreground">Manage your team, customize fields, and configure system behavior.</p>
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Settings</h1>
+          <p className="text-muted-foreground text-sm">Manage your team, customize fields, and configure system behavior.</p>
         </div>
       </div>
 
       <Tabs defaultValue="integrations" className="space-y-4">
-        <TabsList className="bg-muted/50">
-          <TabsTrigger value="integrations">Integrations</TabsTrigger>
-          <TabsTrigger value="users">User Management</TabsTrigger>
-          <TabsTrigger value="fields">Dynamic Fields</TabsTrigger>
-          <TabsTrigger value="groups">Group Management</TabsTrigger>
-          <TabsTrigger value="maintenance">Maintenance</TabsTrigger>
+        <TabsList className="bg-muted/50 flex-wrap h-auto gap-1 p-1">
+          <TabsTrigger value="integrations" className="text-xs md:text-sm">Integrations</TabsTrigger>
+          <TabsTrigger value="users" className="text-xs md:text-sm">Users</TabsTrigger>
+          <TabsTrigger value="fields" className="text-xs md:text-sm">Fields</TabsTrigger>
+          <TabsTrigger value="groups" className="text-xs md:text-sm">Groups</TabsTrigger>
+          <TabsTrigger value="maintenance" className="text-xs md:text-sm">Maintenance</TabsTrigger>
         </TabsList>
 
         <TabsContent value="integrations" className="space-y-4">
@@ -170,7 +170,7 @@ export default function SettingsPage() {
                 </p>
               )}
 
-              <div className="grid gap-4 sm:grid-cols-3">
+              <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
                 {/* Zapier */}
                 <div className="rounded-lg border p-4 space-y-2">
                   <h4 className="font-medium">Zapier</h4>
@@ -323,7 +323,8 @@ export default function SettingsPage() {
               </Dialog>
             </CardHeader>
             <CardContent>
-              <div className="rounded-md border overflow-hidden">
+              {/* Desktop table */}
+              <div className="hidden md:block rounded-md border overflow-hidden">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="bg-muted/50 border-b">
@@ -366,9 +367,9 @@ export default function SettingsPage() {
                           {new Date(user.created_at).toLocaleDateString()}
                         </td>
                         <td className="p-3 text-right">
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
+                          <Button
+                            variant="ghost"
+                            size="icon"
                             className="h-8 w-8 text-red-500 hover:text-red-600 hover:bg-red-50"
                             onClick={() => handleDeleteUser(user.id)}
                             disabled={user.status === 'deleted'}
@@ -387,6 +388,52 @@ export default function SettingsPage() {
                     )}
                   </tbody>
                 </table>
+              </div>
+
+              {/* Mobile card list */}
+              <div className="md:hidden space-y-3">
+                {users.map(user => (
+                  <div key={user.id} className="rounded-lg border p-3 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-semibold shrink-0">
+                          {user.name[0]}
+                        </div>
+                        <div className="min-w-0">
+                          <div className="font-medium text-sm truncate">{user.name}</div>
+                          <div className="text-xs text-muted-foreground truncate">{user.email}</div>
+                        </div>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-red-500 hover:text-red-600 hover:bg-red-50 shrink-0"
+                        onClick={() => handleDeleteUser(user.id)}
+                        disabled={user.status === 'deleted'}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    <div className="flex items-center gap-3 text-xs">
+                      <Badge variant="outline" className="capitalize text-[10px] font-mono">
+                        {user.role}
+                      </Badge>
+                      <div className="flex items-center gap-1.5">
+                        <div className={cn(
+                          "h-1.5 w-1.5 rounded-full",
+                          user.status === 'active' ? "bg-green-500" : "bg-red-500"
+                        )} />
+                        <span className="capitalize">{user.status}</span>
+                      </div>
+                      <span className="text-muted-foreground font-mono ml-auto">
+                        {new Date(user.created_at).toLocaleDateString()}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+                {users.length === 0 && (
+                  <p className="p-8 text-center text-muted-foreground italic">No users found.</p>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -407,10 +454,10 @@ export default function SettingsPage() {
               <p className="text-sm text-muted-foreground">Cleanup and archiving tasks.</p>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="flex items-center justify-between p-4 border rounded-lg">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 border rounded-lg">
                 <div>
-                  <h4 className="font-semibold">6-Month Archiving</h4>
-                  <p className="text-sm text-muted-foreground">Move resolved interactions older than 6 months to dedicated archive tables.</p>
+                  <h4 className="font-semibold text-sm md:text-base">6-Month Archiving</h4>
+                  <p className="text-xs md:text-sm text-muted-foreground">Move resolved interactions older than 6 months to dedicated archive tables.</p>
                 </div>
                 <Button 
                   variant="outline" 

@@ -1,22 +1,23 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { 
-  Search, 
-  Inbox as InboxIcon, 
-  Star, 
-  Archive, 
-  Trash2, 
-  MoreVertical, 
-  Reply, 
-  Forward, 
-  User, 
-  Clock, 
+import {
+  Search,
+  Inbox as InboxIcon,
+  Star,
+  Archive,
+  Trash2,
+  MoreVertical,
+  Reply,
+  Forward,
+  User,
+  Clock,
   Filter,
   ChevronRight,
   RefreshCcw,
   Mail as MailIcon,
-  AlertCircle
+  AlertCircle,
+  ArrowLeft
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -52,19 +53,27 @@ export default function InboxPage() {
     }
   }, [selectedId]);
 
-  const filteredEmails = emails.filter(e => 
+  const filteredEmails = emails.filter(e =>
     e.subject.toLowerCase().includes(searchQuery.toLowerCase()) ||
     e.contact_email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
     e.contact_name?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  const handleBack = () => {
+    setSelectedId(null);
+    setDetail(null);
+  };
+
   return (
     <div className="flex h-full overflow-hidden bg-background/50 backdrop-blur-sm">
-      {/* List Search & Control Pane */}
-      <div className="w-96 flex flex-col border-r bg-card/30">
-        <div className="p-4 border-b space-y-4">
+      {/* List Search & Control Pane - hidden on mobile when detail is selected */}
+      <div className={cn(
+        "w-full md:w-96 flex flex-col border-r bg-card/30",
+        selectedId ? "hidden md:flex" : "flex"
+      )}>
+        <div className="p-3 md:p-4 border-b space-y-3 md:space-y-4">
           <div className="flex items-center justify-between">
-            <h1 className="text-xl font-bold tracking-tight flex items-center gap-2">
+            <h1 className="text-lg md:text-xl font-bold tracking-tight flex items-center gap-2">
               <InboxIcon className="h-5 w-5 text-primary" />
               Inbox
             </h1>
@@ -81,10 +90,10 @@ export default function InboxPage() {
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
-          <div className="flex gap-2">
-            <Badge variant="secondary" className="cursor-pointer bg-primary/10 text-primary border-primary/20">All</Badge>
-            <Badge variant="outline" className="cursor-pointer text-muted-foreground hover:bg-muted/50 transition-colors">Unassigned</Badge>
-            <Badge variant="outline" className="cursor-pointer text-muted-foreground hover:bg-muted/50 transition-colors">New</Badge>
+          <div className="flex gap-2 overflow-x-auto">
+            <Badge variant="secondary" className="cursor-pointer bg-primary/10 text-primary border-primary/20 shrink-0">All</Badge>
+            <Badge variant="outline" className="cursor-pointer text-muted-foreground hover:bg-muted/50 transition-colors shrink-0">Unassigned</Badge>
+            <Badge variant="outline" className="cursor-pointer text-muted-foreground hover:bg-muted/50 transition-colors shrink-0">New</Badge>
           </div>
         </div>
 
@@ -107,17 +116,17 @@ export default function InboxPage() {
                 <div
                   key={email.id}
                   className={cn(
-                    "p-4 cursor-pointer hover:bg-primary/5 transition-all relative border-l-4",
+                    "p-3 md:p-4 cursor-pointer hover:bg-primary/5 transition-all relative border-l-4",
                     selectedId === email.id ? "bg-primary/10 border-primary shadow-inner" : "border-transparent",
                     email.status === 'new' && "font-bold"
                   )}
                   onClick={() => setSelectedId(email.id)}
                 >
                   <div className="flex justify-between items-start mb-1">
-                    <span className="text-xs font-bold text-primary uppercase tracking-tighter truncate w-40">
+                    <span className="text-xs font-bold text-primary uppercase tracking-tighter truncate max-w-[60%]">
                       {email.contact_name || email.contact_email || "Anonymous Sender"}
                     </span>
-                    <span className="text-[10px] text-muted-foreground font-medium">
+                    <span className="text-[10px] text-muted-foreground font-medium shrink-0 ml-2">
                       {formatDistanceToNow(new Date(email.created_at), { addSuffix: true })}
                     </span>
                   </div>
@@ -140,8 +149,11 @@ export default function InboxPage() {
         </ScrollArea>
       </div>
 
-      {/* Detail Content Pane */}
-      <div className="flex-1 flex flex-col bg-background/30">
+      {/* Detail Content Pane - full width on mobile */}
+      <div className={cn(
+        "flex-1 flex flex-col bg-background/30",
+        selectedId ? "flex" : "hidden md:flex"
+      )}>
         {selectedId ? (
           detailLoading ? (
             <div className="flex-1 flex flex-col items-center justify-center space-y-4">
@@ -150,43 +162,45 @@ export default function InboxPage() {
             </div>
           ) : detail ? (
             <>
-              <div className="p-4 border-b flex items-center justify-between bg-card/20 backdrop-blur-md">
-                <div className="flex items-center gap-4">
-                  <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary shadow-lg shadow-primary/10">
-                    <User className="h-5 w-5" />
+              <div className="p-3 md:p-4 border-b flex items-center justify-between bg-card/20 backdrop-blur-md gap-2">
+                <div className="flex items-center gap-2 md:gap-4 min-w-0">
+                  <Button variant="ghost" size="icon" className="md:hidden h-8 w-8 shrink-0" onClick={handleBack}>
+                    <ArrowLeft className="h-4 w-4" />
+                  </Button>
+                  <div className="h-9 w-9 md:h-10 md:w-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary shadow-lg shadow-primary/10 shrink-0">
+                    <User className="h-4 w-4 md:h-5 md:w-5" />
                   </div>
-                  <div>
-                    <h2 className="font-bold tracking-tight">{detail.subject}</h2>
-                    <p className="text-xs text-muted-foreground font-medium">Interaction ID: {detail.id.slice(0, 8)}</p>
+                  <div className="min-w-0">
+                    <h2 className="font-bold tracking-tight text-sm md:text-base truncate">{detail.subject}</h2>
+                    <p className="text-xs text-muted-foreground font-medium truncate">ID: {detail.id.slice(0, 8)}</p>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Button variant="outline" size="sm" className="h-8 gap-2">
+                <div className="flex items-center gap-1 md:gap-2 shrink-0">
+                  <Button variant="outline" size="sm" className="h-8 gap-1 md:gap-2 hidden sm:flex">
                     <Archive className="h-4 w-4" />
-                    Archive
+                    <span className="hidden md:inline">Archive</span>
                   </Button>
                   <Button variant="outline" size="sm" className="h-8 text-red-500 hover:text-red-600 hover:bg-red-500/10 gap-2 border-red-500/20">
                     <Trash2 className="h-4 w-4" />
                   </Button>
-                  <Separator orientation="vertical" className="h-6 mx-1" />
                   <Button variant="ghost" size="icon" className="h-8 w-8">
                     <MoreVertical className="h-4 w-4" />
                   </Button>
                 </div>
               </div>
 
-              <ScrollArea className="flex-1 p-6">
-                <div className="max-w-3xl mx-auto space-y-6">
+              <ScrollArea className="flex-1 p-4 md:p-6">
+                <div className="max-w-3xl mx-auto space-y-4 md:space-y-6">
                   {detail.messages.map((msg, i) => (
                     <div key={msg.id} className="group">
-                      <div className="flex items-center justify-between mb-4">
-                        <div className="flex items-center gap-3">
-                          <div className="h-8 w-8 rounded-full bg-secondary flex items-center justify-center text-xs font-bold">
+                      <div className="flex items-center justify-between mb-3 md:mb-4">
+                        <div className="flex items-center gap-2 md:gap-3 min-w-0">
+                          <div className="h-7 w-7 md:h-8 md:w-8 rounded-full bg-secondary flex items-center justify-center text-xs font-bold shrink-0">
                             {msg.sender.charAt(0).toUpperCase()}
                           </div>
-                          <div>
-                            <p className="text-sm font-bold tracking-tight">{msg.sender}</p>
-                            <p className="text-[10px] text-muted-foreground font-medium">
+                          <div className="min-w-0">
+                            <p className="text-sm font-bold tracking-tight truncate">{msg.sender}</p>
+                            <p className="text-[10px] text-muted-foreground font-medium truncate">
                               via Inbound Gateway • {new Date(msg.created_at).toLocaleString()}
                             </p>
                           </div>
@@ -197,11 +211,11 @@ export default function InboxPage() {
                           </Button>
                         </div>
                       </div>
-                      <div className="bg-card border shadow-sm rounded-2xl p-6 text-sm leading-relaxed text-foreground/90 font-medium whitespace-pre-wrap">
+                      <div className="bg-card border shadow-sm rounded-xl md:rounded-2xl p-4 md:p-6 text-sm leading-relaxed text-foreground/90 font-medium whitespace-pre-wrap">
                         {msg.content}
                       </div>
                       {i < detail.messages.length - 1 && (
-                        <div className="flex justify-center my-4">
+                        <div className="flex justify-center my-3 md:my-4">
                           <Badge variant="outline" className="text-[9px] uppercase tracking-widest font-bold bg-background py-0">Previous Message</Badge>
                         </div>
                       )}
@@ -209,14 +223,14 @@ export default function InboxPage() {
                   ))}
 
                   {/* Quick Action Area */}
-                  <div className="pt-8 pb-12">
+                  <div className="pt-6 md:pt-8 pb-8 md:pb-12">
                     <Card className="border-dashed border-2 bg-primary/5 hover:bg-primary/10 transition-colors cursor-pointer group">
-                      <CardContent className="p-12 flex flex-col items-center justify-center space-y-4">
-                        <div className="h-12 w-12 rounded-full bg-background flex items-center justify-center shadow-md group-hover:scale-110 transition-transform">
-                          <Reply className="h-6 w-6 text-primary" />
+                      <CardContent className="p-6 md:p-12 flex flex-col items-center justify-center space-y-3 md:space-y-4">
+                        <div className="h-10 w-10 md:h-12 md:w-12 rounded-full bg-background flex items-center justify-center shadow-md group-hover:scale-110 transition-transform">
+                          <Reply className="h-5 w-5 md:h-6 md:w-6 text-primary" />
                         </div>
                         <div className="text-center">
-                          <p className="font-bold tracking-tight">Click to compose a reply</p>
+                          <p className="font-bold tracking-tight text-sm md:text-base">Click to compose a reply</p>
                           <p className="text-xs text-muted-foreground font-medium">Send an official response to this lead/contact.</p>
                         </div>
                         <div className="flex gap-2">
@@ -234,7 +248,7 @@ export default function InboxPage() {
               </ScrollArea>
             </>
           ) : (
-            <div className="flex-1 flex flex-col items-center justify-center space-y-4 p-12 text-center">
+            <div className="flex-1 flex flex-col items-center justify-center space-y-4 p-6 md:p-12 text-center">
                <AlertCircle className="h-12 w-12 text-red-500/50" />
                <p className="text-sm font-bold text-muted-foreground">CRITICAL ERROR: Failed to load message detail.</p>
                <Button variant="outline" size="sm" onClick={() => setSelectedId(selectedId)}>Retry Handshake</Button>
@@ -244,10 +258,10 @@ export default function InboxPage() {
           <div className="flex-1 flex flex-col items-center justify-center space-y-6 opacity-40">
             <div className="relative">
                <div className="absolute -inset-4 bg-primary/20 blur-2xl rounded-full animate-pulse" />
-               <MailIcon className="h-24 w-24 text-primary relative" />
+               <MailIcon className="h-16 w-16 md:h-24 md:w-24 text-primary relative" />
             </div>
-            <div className="text-center max-w-xs">
-              <h3 className="text-lg font-bold tracking-tighter uppercase mb-2">Select a transmission</h3>
+            <div className="text-center max-w-xs px-4">
+              <h3 className="text-base md:text-lg font-bold tracking-tighter uppercase mb-2">Select a transmission</h3>
               <p className="text-xs font-medium text-muted-foreground uppercase tracking-widest leading-loose">
                 Pick a communication packet from the terminal on the left to initialize visual decryption.
               </p>
