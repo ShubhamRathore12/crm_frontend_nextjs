@@ -40,7 +40,7 @@ export default function SettingsPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [addingUser, setAddingUser] = useState(false);
-  const [newUser, setNewUser] = useState({ name: "", email: "", role: "agent" });
+  const [newUser, setNewUser] = useState({ name: "", email: "", role: "agent", password: "" });
   const [adding, setAdding] = useState<"zapier" | "slack" | "calendly" | null>(null);
   const [webhookUrl, setWebhookUrl] = useState("");
   const [calendlyLink, setCalendlyLink] = useState("");
@@ -63,7 +63,7 @@ export default function SettingsPage() {
       const user = await api.users.create(newUser);
       setUsers([user, ...users]);
       setAddingUser(false);
-      setNewUser({ name: "", email: "", role: "agent" });
+      setNewUser({ name: "", email: "", role: "agent", password: "" });
       setSuccess(`User ${user.name} created successfully.`);
     } catch (e) {
       setError((e as Error).message);
@@ -286,6 +286,16 @@ export default function SettingsPage() {
                         value={newUser.email} 
                         onChange={(e) => setNewUser({...newUser, email: e.target.value})} 
                         placeholder="john@company.com" 
+                      />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="password">Password</Label>
+                      <Input
+                        id="password"
+                        type="password"
+                        value={newUser.password}
+                        onChange={(e) => setNewUser({...newUser, password: e.target.value})}
+                        placeholder="Enter password"
                       />
                     </div>
                     <div className="grid gap-2">
