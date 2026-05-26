@@ -1,7 +1,7 @@
 /**
  * Backend API base URL. In dev, next.config rewrites /api/* to localhost:8080.
  */
-const API_BASE =  "https://crm-backend-fastify.onrender.com";
+const API_BASE = "https://primeosys.com/crm-backend";
 
 function getAuthHeaders(): Record<string, string> {
   if (typeof window === "undefined") return {};
@@ -14,7 +14,7 @@ async function request<T>(
   options?: RequestInit & { params?: Record<string, string> }
 ): Promise<T> {
   const { params, ...init } = options ?? {};
-  const url = new URL(`/api/v1${path}`, API_BASE);
+  const url = new URL(`${API_BASE}/api/v1${path}`);
   if (params) {
     Object.entries(params).forEach(([k, v]) => {
       if (v !== undefined && v !== "") url.searchParams.set(k, v);

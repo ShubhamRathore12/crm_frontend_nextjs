@@ -69,7 +69,9 @@ export default function CalendarPage() {
     startTransition(async () => {
       try {
         const res = await api.leads.list();
-        setLeads(res.data ?? []);
+        setLeads(res?.data ?? []);
+      } catch {
+        setLeads([]);
       } finally {
         setLoading(false);
       }
@@ -132,7 +134,13 @@ export default function CalendarPage() {
               <div key={`empty-${i}`} className="bg-muted/10 p-1 md:p-2 min-h-[60px] md:min-h-[100px]" />
             ))}
             {daysInMonth.map((day) => {
-              const dayLeads = leads.filter(l => isSameDay(new Date(l.created_at), day));
+              const dayLeads = leads.filter(l => {
+                try {
+                  return l.created_at && isSameDay(new Date(l.created_at), day);
+                } catch {
+                  return false;
+                }
+              });
               const isToday = isSameDay(day, new Date());
 
               return (
@@ -188,7 +196,13 @@ export default function CalendarPage() {
               </CardTitle>
             </CardHeader>
             <CardContent className="px-0 space-y-4">
-              {leads.filter(l => new Date(l.created_at) > currentDate).slice(0, 5).map(lead => (
+              {leads.filter(l => {
+                try {
+                  return l.created_at && new Date(l.created_at) > currentDate;
+                } catch {
+                  return false;
+                }
+              }).slice(0, 5).map(lead => (
                 <div key={lead.id} className="p-4 rounded-xl border bg-card/50 hover:border-primary/30 transition-all hover:bg-card shadow-sm hover:shadow-md group">
                   <div className="flex items-start justify-between mb-2">
                     <Badge variant="outline" className="text-[10px] font-mono bg-background">

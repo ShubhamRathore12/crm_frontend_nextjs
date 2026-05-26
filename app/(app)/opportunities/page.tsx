@@ -9,11 +9,11 @@ import { Plus, MoreHorizontal, DollarSign, Calendar, User, ArrowRight } from "lu
 import { cn } from "@/lib/utils";
 
 const STAGES = [
-  { id: "discovery", label: "Discovery", color: "bg-blue-500/10 text-blue-500 border-blue-500/20" },
+  { id: "qualification", label: "Qualification", color: "bg-blue-500/10 text-blue-500 border-blue-500/20" },
   { id: "proposal", label: "Proposal", color: "bg-purple-500/10 text-purple-500 border-purple-500/20" },
   { id: "negotiation", label: "Negotiation", color: "bg-orange-500/10 text-orange-500 border-orange-500/20" },
-  { id: "won", label: "Closed Won", color: "bg-green-500/10 text-green-500 border-green-500/20" },
-  { id: "lost", label: "Closed Lost", color: "bg-red-500/10 text-red-500 border-red-500/20" },
+  { id: "closed_won", label: "Closed Won", color: "bg-green-500/10 text-green-500 border-green-500/20" },
+  { id: "closed_lost", label: "Closed Lost", color: "bg-red-500/10 text-red-500 border-red-500/20" },
 ];
 
 function KanbanSkeleton() {
@@ -62,6 +62,8 @@ export default function OpportunitiesPage() {
         const res = await api.opportunities.list();
         const data = Array.isArray(res) ? res : (res as any).data ?? [];
         setOpportunities(data);
+      } catch {
+        setOpportunities([]);
       } finally {
         setLoading(false);
       }
