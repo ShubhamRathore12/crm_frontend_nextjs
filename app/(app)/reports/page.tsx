@@ -253,10 +253,10 @@ export default function ReportsPage() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {[
-          { label: "Total Leads", value: overall?.leads, icon: Users, color: "text-blue-500", bg: "bg-blue-500/10", trend: "+12%" },
-          { label: "Active Opps", value: overall?.opportunities, icon: Target, color: "text-purple-500", bg: "bg-purple-500/10", trend: "+5%" },
-          { label: "Interactions", value: overall?.interactions, icon: MessageSquare, color: "text-green-500", bg: "bg-green-500/10", trend: "+24%" },
-          { label: "Tasks Done", value: overall?.tasks, icon: TrendingUp, color: "text-orange-500", bg: "bg-orange-500/10", trend: "98%" },
+          { label: "Total Leads", value: typeof (overall as any)?.leads === 'object' ? (overall as any)?.leads?.total : (overall as any)?.leads, icon: Users, color: "text-blue-500", bg: "bg-blue-500/10", trend: "+12%" },
+          { label: "Active Opps", value: typeof (overall as any)?.opportunities === 'object' ? (overall as any)?.opportunities?.total : (overall as any)?.opportunities, icon: Target, color: "text-purple-500", bg: "bg-purple-500/10", trend: "+5%" },
+          { label: "Interactions", value: typeof (overall as any)?.interactions === 'object' ? (overall as any)?.interactions?.total : (overall as any)?.interactions, icon: MessageSquare, color: "text-green-500", bg: "bg-green-500/10", trend: "+24%" },
+          { label: "Tasks Done", value: typeof (overall as any)?.tasks === 'object' ? (overall as any)?.tasks?.total : (overall as any)?.tasks, icon: TrendingUp, color: "text-orange-500", bg: "bg-orange-500/10", trend: "98%" },
         ].map((item, i) => (
           <Card key={i} className="border-none shadow-xl shadow-black/5 overflow-hidden group hover:-translate-y-1 transition-all duration-300 bg-card/50 backdrop-blur-md">
             <CardContent className="p-6">

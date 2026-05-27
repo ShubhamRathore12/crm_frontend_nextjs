@@ -57,9 +57,9 @@ export function TaskCard({ task, onClick }: TaskCardProps) {
         </div>
       )}
 
-      {task.tags.length > 0 && (
+      {(task.tags || []).length > 0 && (
         <div className="mt-2 flex flex-wrap gap-1">
-          {task.tags.slice(0, 3).map((tag) => (
+          {(task.tags || []).slice(0, 3).map((tag) => (
             <span key={tag} className="rounded bg-secondary px-1.5 py-0.5 text-[10px] text-muted-foreground">
               {tag}
             </span>

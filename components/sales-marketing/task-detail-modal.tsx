@@ -56,7 +56,7 @@ export function TaskDetailModal({ task, isNew, defaultStatus, onClose, onSave }:
       setEffortHours(String(task.effort_hours));
       setCategory(task.category);
       setDepartment(task.department);
-      setTagsStr(task.tags.join(", "));
+      setTagsStr((task.tags || []).join(", "));
     } else if (isNew) {
       setStatus(defaultStatus ?? "todo");
     }

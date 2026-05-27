@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "analyze": "node scripts/analyze-bundle.js",
+    "analyze:build": "ANALYZE=true next build"
   },
   "dependencies": {
     "@radix-ui/react-avatar": "^1.1.1",

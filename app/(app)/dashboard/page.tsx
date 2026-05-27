@@ -1,26 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { api } from "@/lib/api";
-import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  ArcElement,
-  PointElement,
-  LineElement,
-  RadialLinearScale,
-  Title,
-  Tooltip,
-  Legend,
-  Filler,
-} from "chart.js";
-import { Bar, Doughnut, Line, PolarArea, Radar, Pie } from "react-chartjs-2";
+import gsap from "gsap";
 import {
   UserPlus,
   MessageSquare,
@@ -38,8 +24,9 @@ import {
   Circle,
   Radar as RadarIcon,
 } from "lucide-react";
-
-ChartJS.register(CategoryScale, LinearScale, BarElement, ArcElement, PointElement, LineElement, RadialLinearScale, Title, Tooltip, Legend, Filler);
+import { usePerformanceTracking } from "@/lib/performance";
+import { DynamicChart, CHART_OPTIONS, DONUT_OPTIONS, RADAR_OPTIONS, POLAR_OPTIONS } from "@/components/charts/DynamicChart";
+import { CardSkeleton, TableSkeleton } from "@/components/dynamic-import";
 
 // ── Color palette ───────────────────────────────────────────────────────────
 const COLORS = [
@@ -55,22 +42,7 @@ const COLORS = [
   "hsla(180, 60%, 45%, 0.7)",
 ];
 
-const CHART_OPTS = {
-  responsive: true,
-  maintainAspectRatio: false,
-  plugins: { legend: { display: false } },
-  scales: {
-    y: { grid: { color: "hsla(240,5%,50%,0.1)" }, ticks: { color: "hsla(240,5%,50%,0.6)", font: { size: 10 } } },
-    x: { grid: { display: false }, ticks: { color: "hsla(240,5%,50%,0.6)", font: { size: 10 } } },
-  },
-};
 
-const DONUT_OPTS = {
-  responsive: true,
-  maintainAspectRatio: false,
-  plugins: { legend: { position: "bottom" as const, labels: { padding: 16, usePointStyle: true, font: { size: 11 } } } },
-  cutout: "65%",
-};
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 function objToArr(obj: Record<string, number> | undefined) {
@@ -154,27 +126,7 @@ const CHART_TYPE_OPTIONS: { type: ChartType; icon: typeof BarChart3; label: stri
   { type: "radar", icon: RadarIcon, label: "Radar" },
 ];
 
-const RADAR_OPTS = {
-  responsive: true,
-  maintainAspectRatio: false,
-  plugins: { legend: { display: false } },
-  scales: {
-    r: {
-      grid: { color: "hsla(240,5%,50%,0.15)" },
-      pointLabels: { color: "hsla(240,5%,50%,0.7)", font: { size: 10 } },
-      ticks: { display: false },
-    },
-  },
-};
 
-const POLAR_OPTS = {
-  responsive: true,
-  maintainAspectRatio: false,
-  plugins: { legend: { position: "bottom" as const, labels: { padding: 12, usePointStyle: true, font: { size: 10 } } } },
-  scales: {
-    r: { grid: { color: "hsla(240,5%,50%,0.1)" }, ticks: { display: false } },
-  },
-};
 
 function ChartRenderer({ type, labels, values }: { type: ChartType; labels: string[]; values: number[] }) {
   const cleanLabels = labels.map((l) => l.replace(/_/g, " "));
@@ -200,22 +152,60 @@ function ChartRenderer({ type, labels, values }: { type: ChartType; labels: stri
     datasets: [{ data: values, backgroundColor: bgColors, borderColor: "transparent", hoverOffset: 8 }],
   };
 
-  switch (type) {
-    case "bar":
-      return <Bar data={barLineData} options={CHART_OPTS as any} />;
-    case "line":
-      return <Line data={barLineData} options={CHART_OPTS as any} />;
-    case "doughnut":
-      return <Doughnut data={segmentData} options={DONUT_OPTS as any} />;
-    case "pie":
-      return <Pie data={segmentData} options={{ ...DONUT_OPTS, cutout: 0 } as any} />;
-    case "polar":
-      return <PolarArea data={segmentData} options={POLAR_OPTS as any} />;
-    case "radar":
-      return <Radar data={{ labels: cleanLabels, datasets: [{ label: "Value", data: values, backgroundColor: COLORS[0].replace("0.7", "0.15"), borderColor: COLORS[0], pointBackgroundColor: COLORS[0], pointRadius: 3 }] }} options={RADAR_OPTS as any} />;
-    default:
-      return <Bar data={barLineData} options={CHART_OPTS as any} />;
-  }
+  const radarData = {
+    labels: cleanLabels,
+    datasets: [{
+      label: "Value",
+      data: values,
+      backgroundColor: COLORS[0].replace("0.7", "0.15"),
+      borderColor: COLORS[0],
+      pointBackgroundColor: COLORS[0],
+      pointRadius: 3,
+    }],
+  };
+
+  // Get appropriate options based on chart type
+  const getOptions = () => {
+    switch (type) {
+      case "bar":
+      case "line":
+        return CHART_OPTIONS;
+      case "doughnut":
+      case "pie":
+        return type === "pie" ? { ...DONUT_OPTIONS, cutout: 0 } : DONUT_OPTIONS;
+      case "polar":
+        return POLAR_OPTIONS;
+      case "radar":
+        return RADAR_OPTIONS;
+      default:
+        return CHART_OPTIONS;
+    }
+  };
+
+  // Get appropriate data based on chart type
+  const getData = () => {
+    switch (type) {
+      case "bar":
+      case "line":
+        return barLineData;
+      case "doughnut":
+      case "pie":
+      case "polar":
+        return segmentData;
+      case "radar":
+        return radarData;
+      default:
+        return barLineData;
+    }
+  };
+
+  return (
+    <DynamicChart
+      type={type}
+      data={getData()}
+      options={getOptions()}
+    />
+  );
 }
 
 function ChartPanel({ chart }: { chart: DialogData["charts"][0] }) {
@@ -285,6 +275,12 @@ function DetailDialog({ data, open, onClose }: { data: DialogData | null; open: 
 // ── Main Dashboard ──────────────────────────────────────────────────────────
 export default function DashboardPage() {
   const [dialogData, setDialogData] = useState<DialogData | null>(null);
+  const widgetsRef = useRef<HTMLDivElement>(null);
+  const breakdownRef = useRef<HTMLDivElement>(null);
+  const headerRef = useRef<HTMLDivElement>(null);
+  
+  // Performance tracking
+  const { startTimer, endTimer } = usePerformanceTracking("DashboardPage");
 
   const { data: leadStats, isLoading: isLeadStatsLoading } = useQuery({
     queryKey: ["lead-stats"],
@@ -295,6 +291,77 @@ export default function DashboardPage() {
     queryKey: ["analytics-overview"],
     queryFn: () => api.analytics.overview(),
   });
+
+  // GSAP entrance animations with performance tracking
+  useEffect(() => {
+    if (isLoading) return;
+
+    startTimer();
+    const ctx = gsap.context(() => {
+      // Header animation
+      if (headerRef.current) {
+        gsap.fromTo(headerRef.current, 
+          { y: -20, opacity: 0 },
+          { y: 0, opacity: 1, duration: 0.6, ease: "power3.out" }
+        );
+      }
+
+      // Widget cards stagger animation
+      if (widgetsRef.current) {
+        const cards = widgetsRef.current.querySelectorAll(".dashboard-card");
+        gsap.fromTo(cards,
+          { y: 40, opacity: 0, scale: 0.95 },
+          { 
+            y: 0, opacity: 1, scale: 1,
+            stagger: 0.06,
+            duration: 0.5,
+            ease: "back.out(1.4)",
+            delay: 0.2,
+          }
+        );
+      }
+
+      // Breakdown cards stagger
+      if (breakdownRef.current) {
+        const cards = breakdownRef.current.querySelectorAll(".breakdown-card");
+        gsap.fromTo(cards,
+          { y: 30, opacity: 0 },
+          {
+            y: 0, opacity: 1,
+            stagger: 0.08,
+            duration: 0.5,
+            ease: "power2.out",
+            delay: 0.6,
+          }
+        );
+      }
+    });
+
+    // Track animation completion time
+    endTimer();
+
+    return () => ctx.revert();
+  }, [isLoading, startTimer, endTimer]);
+
+  // Counter animation for numbers
+  useEffect(() => {
+    if (isLoading || !widgetsRef.current) return;
+    const counters = widgetsRef.current.querySelectorAll(".counter-value");
+    counters.forEach((el) => {
+      const target = parseInt(el.getAttribute("data-value") || "0", 10);
+      if (isNaN(target) || target === 0) return;
+      const obj = { val: 0 };
+      gsap.to(obj, {
+        val: target,
+        duration: 1.2,
+        delay: 0.4,
+        ease: "power2.out",
+        onUpdate: () => {
+          el.textContent = Math.round(obj.val).toLocaleString();
+        },
+      });
+    });
+  }, [isLoading, overview]);
 
   // The overview response has nested byStatus/byStage/bySource/byChannel objects
   // Normalize to arrays for display
@@ -475,7 +542,7 @@ export default function DashboardPage() {
 
   return (
     <div className="p-4 md:p-6 space-y-4 md:space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+      <div ref={headerRef} className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <div>
           <h1 className="text-xl md:text-2xl font-semibold">Dashboard</h1>
           <p className="text-sm text-muted-foreground">Click any card for detailed charts and comparisons</p>
@@ -488,30 +555,35 @@ export default function DashboardPage() {
       </div>
 
       {/* Widgets grid */}
-      <div className="grid gap-3 md:gap-4 grid-cols-2 lg:grid-cols-4">
+      <div ref={widgetsRef} className="grid gap-3 md:gap-4 grid-cols-2 lg:grid-cols-4">
         {isLoading
           ? Array.from({ length: 8 }).map((_, i) => <WidgetSkeleton key={i} />)
           : widgets.map((w) => (
               <Card
                 key={w.title}
-                className="cursor-pointer hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 group"
+                className="dashboard-card cursor-pointer hover:shadow-lg hover:-translate-y-1 transition-all duration-300 group border-transparent hover:border-primary/20"
                 onClick={w.onClick}
               >
                 <CardHeader className="flex flex-row items-center justify-between pb-2">
                   <CardTitle className="text-xs md:text-sm font-medium text-muted-foreground">
                     {w.title}
                   </CardTitle>
-                  <div className={`p-1.5 rounded-lg ${w.bg}`}>
+                  <div className={`p-1.5 rounded-lg ${w.bg} group-hover:scale-110 transition-transform duration-300`}>
                     <w.icon className={`h-3.5 w-3.5 md:h-4 md:w-4 ${w.color}`} />
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-xl md:text-2xl font-bold">{typeof w.value === "number" ? w.value.toLocaleString() : w.value}</div>
+                  <div
+                    className="counter-value text-xl md:text-2xl font-bold"
+                    data-value={typeof w.value === "number" ? w.value : undefined}
+                  >
+                    {typeof w.value === "number" ? "0" : w.value}
+                  </div>
                   <div className="flex items-center justify-between mt-1">
                     {w.subtitle ? (
                       <p className="text-[10px] md:text-xs text-muted-foreground">{w.subtitle}</p>
                     ) : <span />}
-                    <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/40 group-hover:text-primary transition-colors" />
+                    <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/40 group-hover:text-primary group-hover:translate-x-0.5 transition-all duration-300" />
                   </div>
                 </CardContent>
               </Card>
@@ -519,10 +591,10 @@ export default function DashboardPage() {
       </div>
 
       {/* Breakdown sections */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+      <div ref={breakdownRef} className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {/* Leads by Status */}
         {isLeadStatsLoading ? <StatsCardSkeleton /> : leadsByStatus.length > 0 && (
-          <Card className="cursor-pointer hover:shadow-lg transition-all" onClick={() => widgets[0].onClick()}>
+          <Card className="breakdown-card cursor-pointer hover:shadow-lg transition-all" onClick={() => widgets[0].onClick()}>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium flex items-center justify-between">
                 Leads by Status
@@ -539,7 +611,7 @@ export default function DashboardPage() {
 
         {/* Opportunities by Stage */}
         {oppsByStage.length > 0 && (
-          <Card className="cursor-pointer hover:shadow-lg transition-all" onClick={() => widgets[2].onClick()}>
+          <Card className="breakdown-card cursor-pointer hover:shadow-lg transition-all" onClick={() => widgets[2].onClick()}>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium flex items-center justify-between">
                 Opportunities by Stage
@@ -556,7 +628,7 @@ export default function DashboardPage() {
 
         {/* Tasks by Status */}
         {tasksByStatus.length > 0 && (
-          <Card className="cursor-pointer hover:shadow-lg transition-all" onClick={() => widgets[3].onClick()}>
+          <Card className="breakdown-card cursor-pointer hover:shadow-lg transition-all" onClick={() => widgets[3].onClick()}>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium flex items-center justify-between">
                 Tasks by Status
@@ -573,7 +645,7 @@ export default function DashboardPage() {
 
         {/* Interactions by Channel */}
         {interactionsByChannel.length > 0 && (
-          <Card className="cursor-pointer hover:shadow-lg transition-all" onClick={() => widgets[4].onClick()}>
+          <Card className="breakdown-card cursor-pointer hover:shadow-lg transition-all" onClick={() => widgets[4].onClick()}>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium flex items-center justify-between">
                 Interactions by Channel
@@ -590,7 +662,7 @@ export default function DashboardPage() {
 
         {/* Emails read vs unread */}
         {totalEmails > 0 && (
-          <Card className="cursor-pointer hover:shadow-lg transition-all" onClick={() => widgets[6].onClick()}>
+          <Card className="breakdown-card cursor-pointer hover:shadow-lg transition-all" onClick={() => widgets[6].onClick()}>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium flex items-center justify-between">
                 Email Performance
@@ -610,7 +682,7 @@ export default function DashboardPage() {
 
         {/* Leads by Source */}
         {leadsBySource.length > 0 && (
-          <Card className="cursor-pointer hover:shadow-lg transition-all" onClick={() => widgets[0].onClick()}>
+          <Card className="breakdown-card cursor-pointer hover:shadow-lg transition-all" onClick={() => widgets[0].onClick()}>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium flex items-center justify-between">
                 Leads by Source

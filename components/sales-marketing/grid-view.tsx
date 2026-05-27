@@ -147,7 +147,7 @@ export function GridView({ tasks, onTaskClick }: GridViewProps) {
                   <td className="py-2.5 px-3 font-medium max-w-[280px] truncate">{task.title}</td>
                   <td className="py-2.5 px-3">
                     <div className="flex gap-1">
-                      {task.tags.slice(0, 2).map((t) => (
+                      {(task.tags || []).slice(0, 2).map((t) => (
                         <span key={t} className="rounded bg-secondary px-1.5 py-0.5 text-[10px] text-muted-foreground">{t}</span>
                       ))}
                     </div>

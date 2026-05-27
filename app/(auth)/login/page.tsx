@@ -256,8 +256,15 @@ export default function LoginPage() {
       // Shake animation on error
       if (formRef.current) {
         gsap.to(formRef.current, {
-          x: [-10, 10, -8, 8, -4, 4, 0],
-          duration: 0.5,
+          keyframes: [
+            { x: -10, duration: 0.05 },
+            { x: 10, duration: 0.05 },
+            { x: -8, duration: 0.05 },
+            { x: 8, duration: 0.05 },
+            { x: -4, duration: 0.05 },
+            { x: 4, duration: 0.05 },
+            { x: 0, duration: 0.1 },
+          ],
           ease: "power2.out",
         });
       }

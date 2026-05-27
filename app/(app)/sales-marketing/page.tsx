@@ -77,8 +77,8 @@ export default function SalesMarketingPage() {
     ? tasks.filter(
         (t) =>
           t.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          t.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          t.tags.some((tag) => tag.toLowerCase().includes(searchQuery.toLowerCase()))
+          (t.category || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+          (t.tags || []).some((tag) => tag.toLowerCase().includes(searchQuery.toLowerCase()))
       )
     : tasks;
 

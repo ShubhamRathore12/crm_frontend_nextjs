@@ -179,29 +179,29 @@ export const api = {
   salesMarketing: {
     tasks: {
       list: (filters?: { status?: string; priority?: string; assignee_id?: string }) =>
-        request<SalesTask[]>("/sales-marketing/tasks", filters ? { params: filters as Record<string, string> } : undefined),
-      get: (id: string) => request<SalesTask>(`/sales-marketing/tasks/${id}`),
+        request<{ data: SalesTask[] }>("/tasks/sales-marketing", filters ? { params: filters as Record<string, string> } : undefined).then(res => (res as any).data ?? res),
+      get: (id: string) => request<SalesTask>(`/tasks/sales-marketing/${id}`),
       create: (body: CreateSalesTask) =>
-        request<SalesTask>("/sales-marketing/tasks", { method: "POST", body: JSON.stringify(body) }),
+        request<SalesTask>("/tasks/sales-marketing", { method: "POST", body: JSON.stringify(body) }),
       update: (id: string, body: Partial<CreateSalesTask>) =>
-        request<SalesTask>(`/sales-marketing/tasks/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
+        request<SalesTask>(`/tasks/sales-marketing/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
       delete: (id: string) =>
-        request<{ ok: boolean }>(`/sales-marketing/tasks/${id}`, { method: "DELETE" }),
+        request<{ ok: boolean }>(`/tasks/sales-marketing/${id}`, { method: "DELETE" }),
       board: () => request<Record<string, SalesTask[]>>("/tasks/sales-marketing/board"),
     },
     forms: {
-      list: () => request<SalesForm[]>("/sales-marketing/forms"),
-      get: (id: string) => request<SalesForm>(`/sales-marketing/forms/${id}`),
+      list: () => request<{ data: SalesForm[] }>("/sales-forms").then(res => (res as any).data ?? res),
+      get: (id: string) => request<SalesForm>(`/sales-forms/${id}`),
       create: (body: { name: string; description?: string; fields_json?: unknown }) =>
-        request<SalesForm>("/sales-marketing/forms", { method: "POST", body: JSON.stringify(body) }),
+        request<SalesForm>("/sales-forms", { method: "POST", body: JSON.stringify(body) }),
       update: (id: string, body: { name?: string; description?: string; fields_json?: unknown; is_active?: boolean }) =>
-        request<{ ok: boolean }>(`/sales-marketing/forms/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
+        request<{ ok: boolean }>(`/sales-forms/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
       delete: (id: string) =>
-        request<{ ok: boolean }>(`/sales-marketing/forms/${id}`, { method: "DELETE" }),
+        request<{ ok: boolean }>(`/sales-forms/${id}`, { method: "DELETE" }),
       submit: (id: string, data: unknown) =>
-        request<SalesFormSubmission>(`/sales-marketing/forms/${id}/submit`, { method: "POST", body: JSON.stringify({ data_json: data }) }),
+        request<SalesFormSubmission>(`/sales-forms/${id}/submit`, { method: "POST", body: JSON.stringify({ data_json: data }) }),
       submissions: (id: string) =>
-        request<SalesFormSubmission[]>(`/sales-marketing/forms/${id}/submissions`),
+        request<SalesFormSubmission[]>(`/sales-forms/${id}/submissions`),
     },
   },
 
@@ -318,9 +318,9 @@ export const api = {
       }),
     connections: {
       list: () =>
-        request<Integration[]>("/integrations/connections"),
+        request<Integration[]>("/integrations"),
       create: (body: { provider: string; name?: string; config: Record<string, string> }) =>
-        request<Integration>("/integrations/connections", { method: "POST", body: JSON.stringify(body) }),
+        request<Integration>("/integrations", { method: "POST", body: JSON.stringify(body) }),
     },
   },
 
@@ -361,10 +361,10 @@ export const api = {
   analytics: {
     overview: () => request<AnalyticsOverview>("/analytics/overview"),
     leads: () => request<LeadStats>("/analytics/leads"),
-    interactions: () => request<InteractionStats>("/analytics/interactions"),
+    interactions: () => request<InteractionStats>("/analytics/overview"),
     opportunities: () => request<OpportunityStats>("/analytics/opportunities"),
-    overall: () => request<OverallStats>("/analytics/overall"),
-    health: () => request<SystemHealth>("/analytics/health"),
+    overall: () => request<OverallStats>("/analytics/overview"),
+    health: () => request<SystemHealth>("/ready"),
     providers: () => request<unknown>("/analytics/providers"),
     queue: () => request<unknown>("/analytics/queue"),
   },
