@@ -93,6 +93,10 @@ export const api = {
     score: (id: string) => request<LeadScore>(`/leads/${id}/score`),
     bulkAssign: (body: { lead_ids: string[]; agent_ids: string[] }) =>
       request<{ assigned: number }>("/leads/bulk-assign", { method: "POST", body: JSON.stringify(body) }),
+    uploadHistory: (id: string, params?: { page?: string; limit?: string; action?: string }) =>
+      request<{ data: LeadUploadHistory[]; pagination: { total: number; page: number; limit: number; pages: number } }>(`/leads/${id}/upload-history`, params ? { params: params as Record<string, string> } : undefined),
+    bulkUploadHistory: (bulkUploadId: string, params?: { page?: string; limit?: string }) =>
+      request<{ data: LeadUploadHistory[]; pagination: { total: number; page: number; limit: number; pages: number } }>(`/leads/upload-history/bulk/${bulkUploadId}`, params ? { params: params as Record<string, string> } : undefined),
   },
 
   // ── Contacts ──
@@ -104,8 +108,10 @@ export const api = {
       request<Contact>("/contacts", { method: "POST", body: JSON.stringify(body) }),
     update: (id: string, body: Partial<CreateContact>) =>
       request<Contact>(`/contacts/${id}`, { method: "PUT", body: JSON.stringify(body) }),
-    delete: (id: string) =>
-      request<{ ok: boolean }>(`/contacts/${id}`, { method: "DELETE" }),
+    delete: (id: string, cascade?: boolean) =>
+      request<{ ok: boolean }>(`/contacts/${id}`, { method: "DELETE", params: cascade ? { cascade: "true" } : undefined }),
+    linkedRecords: (id: string) =>
+      request<{ data: { leads: { count: number; records: Lead[] }; opportunities: { count: number; records: Opportunity[] } } }>(`/contacts/${id}/linked-records`),
     import: (contacts: unknown[]) =>
       request<{ imported: number }>("/contacts/bulk-import", {
         method: "POST",
@@ -121,7 +127,7 @@ export const api = {
 
   // ── Interactions ──
   interactions: {
-    list: (params?: { page?: string; limit?: string; channel?: string; status?: string; priority?: string; assigned_to?: string }) =>
+    list: (params?: { page?: string; limit?: string; channel?: string; status?: string; priority?: string; assigned_to?: string; search?: string; created_after?: string; created_before?: string }) =>
       request<{ data: Interaction[]; total: number; page: number; limit: number }>("/interactions", params ? { params: params as Record<string, string> } : undefined),
     get: (id: string) => request<InteractionDetail>(`/interactions/${id}`),
     create: (body: CreateInteraction) =>
@@ -143,8 +149,8 @@ export const api = {
 
   // ── Opportunities ──
   opportunities: {
-    list: (params?: { page?: string; limit?: string; stage?: string; assigned_to?: string }) =>
-      request<Opportunity[]>("/opportunities", params ? { params: params as Record<string, string> } : undefined),
+    list: (params?: { page?: string; limit?: string; stage?: string; assigned_to?: string; search?: string; min_value?: string; max_value?: string; min_probability?: string; max_probability?: string; created_after?: string; created_before?: string; expected_close_after?: string; expected_close_before?: string }) =>
+      request<{ data: Opportunity[]; pagination: { total: number; page: number; limit: number; pages: number } }>("/opportunities", params ? { params: params as Record<string, string> } : undefined),
     get: (id: string) => request<Opportunity>(`/opportunities/${id}`),
     create: (body: CreateOpportunity) =>
       request<Opportunity>("/opportunities", { method: "POST", body: JSON.stringify(body) }),
@@ -154,8 +160,8 @@ export const api = {
       request<{ ok: boolean }>(`/opportunities/${id}`, { method: "DELETE" }),
     pipeline: () => request<PipelineStage[]>("/opportunities/pipeline"),
     stats: () => request<OpportunityStats>("/opportunities/stats"),
-    bulkUpdateStage: (body: { opportunity_ids: string[]; stage: string }) =>
-      request<{ updated: number }>("/opportunities/bulk-update-stage", { method: "POST", body: JSON.stringify(body) }),
+    bulkUpdateStage: (body: { ids: string[]; stage: string; probability?: number }) =>
+      request<{ updated: number; stage: string }>("/opportunities/bulk-update-stage", { method: "POST", body: JSON.stringify(body) }),
   },
 
   // ── Tasks ──
@@ -482,6 +488,18 @@ export type LeadScore = {
   lead_id: string;
   score: number;
   factors: Record<string, number>;
+  created_at: string;
+};
+
+export type LeadUploadHistory = {
+  id: string;
+  bulk_upload_id: string;
+  lead_id: string;
+  source_file: string;
+  row_number: number;
+  action: "created" | "updated" | "skipped";
+  data_before: Record<string, unknown> | null;
+  data_after: Record<string, unknown>;
   created_at: string;
 };
 
