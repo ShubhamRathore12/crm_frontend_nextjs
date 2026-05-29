@@ -10,7 +10,6 @@ yarn-error.log
 pnpm-debug.log
 
 # Build outputs
-.next
 dist
 build
 out
@@ -49,11 +48,7 @@ Jenkinsfile
 .turbo
 .cache
 .eslintcache
-tsconfig.json
-next.config.ts
 .eslintrc.json
-postcss.config.js
-tailwind.config.ts
 jest.config.js
 scripts
 public/fonts

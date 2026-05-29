@@ -10,7 +10,7 @@ COPY .npmrc ./
 RUN npm ci --legacy-peer-deps --prefer-offline --no-audit && \
     npm cache clean --force
 
-# Stage 2: Build the application
+# Stage 2: Build the application (optional - can use pre-built .next)
 FROM node:20-alpine AS builder
 WORKDIR /app
 
@@ -25,11 +25,8 @@ ENV NEXT_PUBLIC_BASE_PATH=/crm
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 
-# Build the application
-RUN npm run build && \
-    # Remove unnecessary files to reduce size
-    rm -rf .git .gitignore .eslintrc.json tsconfig.json next.config.ts && \
-    rm -rf node_modules/.bin node_modules/.cache
+# Skip build if .next already exists, otherwise build
+RUN if [ ! -d ".next" ]; then npm run build; fi
 
 # Stage 3: Production runner - minimal image
 FROM node:20-alpine AS runner
