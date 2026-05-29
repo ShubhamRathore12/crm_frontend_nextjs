@@ -21,7 +21,7 @@ export function KanbanBoard({ refreshKey }: { refreshKey?: number }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    api.opportunities.list().then(setOpportunities).finally(() => setLoading(false));
+    api.opportunities.list().then((response) => setOpportunities(response.data)).finally(() => setLoading(false));
   }, [refreshKey]);
 
   const getCardsByStage = (stageId: string) => {
