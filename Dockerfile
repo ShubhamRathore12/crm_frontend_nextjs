@@ -10,7 +10,7 @@ COPY .npmrc ./
 RUN npm ci --legacy-peer-deps --prefer-offline --no-audit && \
     npm cache clean --force
 
-# Stage 2: Build the application (optional - can use pre-built .next)
+# Stage 2: Build the application
 FROM node:20-alpine AS builder
 WORKDIR /app
 
@@ -22,11 +22,12 @@ COPY . .
 
 # Set build environment variables
 ENV NEXT_PUBLIC_BASE_PATH=/crm
+ENV NEXT_PUBLIC_API_BASE=https://primeosys.com/crm-backend
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 
-# Skip build if .next already exists, otherwise build
-RUN if [ ! -d ".next" ]; then npm run build; fi
+# Build the application
+RUN npm run build
 
 # Stage 3: Production runner - minimal image
 FROM node:20-alpine AS runner
