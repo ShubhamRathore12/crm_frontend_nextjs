@@ -10,7 +10,7 @@ type Contact = {
   id: string;
   ucc_code: string | null;
   name: string;
-  phone: string | null;
+  mobile: string | null;
   email?: string | null;
 };
 
@@ -74,7 +74,7 @@ export default function NewLeadPage() {
                 <option value="">Select contact</option>
                 {contacts.map((c) => (
                   <option key={c.id} value={c.id}>
-                    {c.name} ({c.phone || ""})
+                    {c.name} ({c.mobile || ""})
                   </option>
                 ))}
               </select>

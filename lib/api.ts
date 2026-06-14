@@ -507,7 +507,7 @@ export type Contact = {
   id: string;
   name: string;
   email: string;
-  phone: string | null;
+  mobile: string | null;
   ucc_code: string | null;
   pan: string | null;
   company: string | null;
@@ -523,7 +523,7 @@ export type Contact = {
 export type CreateContact = {
   name: string;
   email: string;
-  phone?: string;
+  mobile?: string;
   ucc_code?: string;
   pan?: string;
   company?: string;

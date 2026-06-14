@@ -67,7 +67,7 @@ export default function NewInteractionPage() {
                 <option value="">Select contact</option>
                 {contacts.map((c) => (
                   <option key={c.id} value={c.id}>
-                    {c.name} ({c.phone || ""})
+                    {c.name} ({c.mobile || ""})
                   </option>
                 ))}
               </select>

@@ -24,7 +24,7 @@ export default function NewContactPage() {
       await api.contacts.create({
         ucc_code: ucc.trim(),
         name: name.trim(),
-        phone: mobile.trim(),
+        mobile: mobile.trim(),
         email: email.trim() || "",
         address: address.trim() || undefined,
       });

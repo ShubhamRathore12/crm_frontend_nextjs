@@ -1,344 +1,217 @@
 # CRM Frontend Deployment Guide
 
-## 📋 Prerequisites
+## Prerequisites
 
-- Docker installed on local machine
-- SSH access to server (91.98.235.142)
-- SSH key at `C:\Users\Shubham\.ssh\ssh-key.key`
+- SSH access to server: `91.98.235.142`
+- SSH key: `C:\Users\Shubham\.ssh\ssh-key.key`
 - Docker installed on server
+- Nginx configured to proxy `/crm/` to port 3005
 
-## 🚀 Deployment Steps
+## Quick Deploy
 
-### Step 1: Build Optimized Docker Image
+### 1. SSH into Server
 
 ```bash
-# Navigate to frontend directory
-cd d:\new_project\new_hmi\crm\frontend
-
-# Build the optimized image
-docker build -t crm-frontend:latest --compress -f Dockerfile .
-
-# Check image size
-docker images crm-frontend:latest
+ssh -i C:\Users\Shubham\.ssh\ssh-key.key root@91.98.235.142
 ```
 
-**Expected image size**: ~200-250MB (optimized from ~400MB)
-
-### Step 2: Verify Image Works Locally
+### 2. Navigate to Project Directory
 
 ```bash
-# Run container locally
-docker run -p 3001:3000 \
-  -e NODE_ENV=production \
-  -e NEXT_PUBLIC_BASE_PATH=/crm \
-  -e NEXT_PUBLIC_API_BASE=https://primeosys.com/crm-backend \
+cd /app/crm-frontend
+```
+
+### 3. Build Docker Image
+
+```bash
+docker build -t crm-frontend:latest .
+```
+
+### 4. Stop Old Container (if exists)
+
+```bash
+docker stop crm-frontend 2>/dev/null
+docker rm crm-frontend 2>/dev/null
+```
+
+### 5. Run New Container
+
+```bash
+docker run -d \
+  --name crm-frontend \
+  --restart unless-stopped \
+  -p 3005:3005 \
   crm-frontend:latest
-
-# Test in browser
-# Visit: http://localhost:3001/crm
 ```
 
-### Step 3: Deploy to Server
-
-#### Option A: Using Deploy Script (Recommended)
-
-```bash
-# Make script executable
-chmod +x deploy.sh
-
-# Run deployment script
-./deploy.sh
-```
-
-#### Option B: Manual Deployment
-
-```bash
-# Step 1: Create deployment directory on server
-ssh -i "C:\Users\Shubham\.ssh\ssh-key.key" root@91.98.235.142 "mkdir -p /opt/crm-frontend"
-
-# Step 2: Save Docker image
-docker save crm-frontend:latest | gzip > crm-frontend.tar.gz
-
-# Step 3: Transfer image to server
-scp -i "C:\Users\Shubham\.ssh\ssh-key.key" crm-frontend.tar.gz root@91.98.235.142:/opt/crm-frontend/
-
-# Step 4: Transfer docker-compose file
-scp -i "C:\Users\Shubham\.ssh\ssh-key.key" docker-compose.yml root@91.98.235.142:/opt/crm-frontend/
-
-# Step 5: Load image and start container on server
-ssh -i "C:\Users\Shubham\.ssh\ssh-key.key" root@91.98.235.142 << 'EOF'
-  cd /opt/crm-frontend
-  
-  # Load Docker image
-  docker load < crm-frontend.tar.gz
-  
-  # Stop existing container
-  docker stop crm-frontend 2>/dev/null || true
-  docker rm crm-frontend 2>/dev/null || true
-  
-  # Start new container
-  docker-compose up -d
-  
-  # Wait for container to be healthy
-  sleep 5
-  
-  # Check status
-  docker ps | grep crm-frontend
-  
-  # Clean up
-  rm crm-frontend.tar.gz
-EOF
-
-# Step 6: Clean up local tar file
-rm crm-frontend.tar.gz
-```
-
-### Step 4: Verify Deployment
+### 6. Verify Deployment
 
 ```bash
 # Check container is running
-ssh -i "C:\Users\Shubham\.ssh\ssh-key.key" root@91.98.235.142 "docker ps | grep crm-frontend"
+docker ps | grep crm-frontend
 
-# Check logs
-ssh -i "C:\Users\Shubham\.ssh\ssh-key.key" root@91.98.235.142 "docker logs crm-frontend"
+# Test the app locally
+curl http://localhost:3005/login
 
-# Test health endpoint
-curl https://primeosys.com/crm/health
-
-# Test in browser
-# Visit: https://primeosys.com/crm
+# Test through nginx (public URL)
+curl https://primeosys.com/crm/login
 ```
 
-## 🐳 Docker Image Optimization
+## Full Deployment Steps (From Windows)
 
-### Size Reduction Techniques Applied
-
-1. **Multi-stage builds**: Only production files copied to final image
-2. **Alpine Linux**: Lightweight base image (~5MB vs ~150MB)
-3. **Dependency caching**: Layers optimized for Docker cache
-4. **Cleanup**: Removed build artifacts and cache
-5. **Compression**: Used `--compress` flag during build
-
-### Image Size Comparison
-
-| Stage | Size | Notes |
-|-------|------|-------|
-| deps | ~150MB | Node modules |
-| builder | ~400MB | Full build with source |
-| runner | ~200-250MB | **Final optimized image** |
-
-### Size Breakdown
-
-```
-crm-frontend:latest
-├── Node.js runtime: ~50MB
-├── Next.js standalone: ~80MB
-├── Application code: ~30MB
-├── Static assets: ~20MB
-└── System files: ~20-70MB
-```
-
-## 🔧 Configuration
-
-### Environment Variables
+### Step 1: Copy Updated Code to Server
 
 ```bash
-NODE_ENV=production
-NEXT_PUBLIC_BASE_PATH=/crm
-NEXT_PUBLIC_API_BASE=https://primeosys.com/crm-backend
+# Sync app directory
+scp -i C:\Users\Shubham\.ssh\ssh-key.key -r "d:\new_project\new_hmi\crm\frontend\app" root@91.98.235.142:/app/crm-frontend/
+
+# Sync components
+scp -i C:\Users\Shubham\.ssh\ssh-key.key -r "d:\new_project\new_hmi\crm\frontend\components" root@91.98.235.142:/app/crm-frontend/
+
+# Sync lib directory
+scp -i C:\Users\Shubham\.ssh\ssh-key.key -r "d:\new_project\new_hmi\crm\frontend\lib" root@91.98.235.142:/app/crm-frontend/
+
+# Copy package.json
+scp -i C:\Users\Shubham\.ssh\ssh-key.key "d:\new_project\new_hmi\crm\frontend\package.json" root@91.98.235.142:/app/crm-frontend/
+
+# Copy Dockerfile
+scp -i C:\Users\Shubham\.ssh\ssh-key.key "d:\new_project\new_hmi\crm\frontend\Dockerfile" root@91.98.235.142:/app/crm-frontend/
 ```
 
-### Resource Limits
+### Step 2: Build & Deploy on Server
 
-```yaml
-deploy:
-  resources:
-    limits:
-      cpus: '1'
-      memory: 512M
-    reservations:
-      cpus: '0.5'
-      memory: 256M
-```
-
-### Health Check
-
-```yaml
-healthcheck:
-  test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/health"]
-  interval: 30s
-  timeout: 3s
-  retries: 3
-  start_period: 5s
-```
-
-## 📊 Deployment Checklist
-
-- [ ] Docker image builds successfully
-- [ ] Image size is ~200-250MB
-- [ ] Container runs locally without errors
-- [ ] Health check passes
-- [ ] SSH access to server works
-- [ ] Deployment directory created on server
-- [ ] Docker image transferred to server
-- [ ] Container starts on server
-- [ ] Health check passes on server
-- [ ] URL accessible: https://primeosys.com/crm
-- [ ] API calls work correctly
-- [ ] Performance optimizations active
-
-## 🚨 Troubleshooting
-
-### Container Won't Start
+SSH into the server and run:
 
 ```bash
-# Check logs
-docker logs crm-frontend
+cd /app/crm-frontend
 
-# Check if port is in use
-docker ps -a | grep 3001
+# Stop old container
+docker stop crm-frontend 2>/dev/null && docker rm crm-frontend 2>/dev/null
 
-# Remove old container
-docker rm -f crm-frontend
-```
-
-### Health Check Failing
-
-```bash
-# Test health endpoint manually
-docker exec crm-frontend wget -O- http://localhost:3000/health
-
-# Check if application is running
-docker exec crm-frontend ps aux | grep node
-```
-
-### High Memory Usage
-
-```bash
-# Check memory usage
-docker stats crm-frontend
-
-# Reduce memory limit in docker-compose.yml
-# Restart container
-docker-compose restart
-```
-
-### Nginx Proxy Issues
-
-```bash
-# Check nginx config
-sudo nginx -t
-
-# Reload nginx
-sudo systemctl reload nginx
-
-# Check nginx logs
-sudo tail -f /var/log/nginx/error.log
-```
-
-## 📈 Monitoring
-
-### Check Container Status
-
-```bash
-# View running containers
-docker ps
-
-# View container logs
-docker logs -f crm-frontend
-
-# View resource usage
-docker stats crm-frontend
-
-# View container details
-docker inspect crm-frontend
-```
-
-### Performance Metrics
-
-```bash
-# Check application performance
-curl https://primeosys.com/crm/test-optimizations
-
-# Monitor API calls
-curl https://primeosys.com/crm-backend/api/v1/health
-```
-
-## 🔄 Updates & Rollback
-
-### Update to New Version
-
-```bash
 # Build new image
 docker build -t crm-frontend:latest .
 
-# Save and transfer
-docker save crm-frontend:latest | gzip > crm-frontend.tar.gz
-scp crm-frontend.tar.gz root@91.98.235.142:/opt/crm-frontend/
+# Run new container
+docker run -d \
+  --name crm-frontend \
+  --restart unless-stopped \
+  -p 3005:3005 \
+  crm-frontend:latest
 
-# On server
-ssh root@91.98.235.142 << 'EOF'
-  cd /opt/crm-frontend
-  docker load < crm-frontend.tar.gz
-  docker-compose up -d
-EOF
+# Wait 10 seconds for startup
+sleep 10
+
+# Verify
+docker ps | grep crm-frontend
+curl http://localhost:3005/login
 ```
 
-### Rollback to Previous Version
+## One-Line Deploy Script
+
+SSH into server and run this single command:
 
 ```bash
-# On server
-ssh root@91.98.235.142 << 'EOF'
-  cd /opt/crm-frontend
-  
-  # Stop current container
-  docker stop crm-frontend
-  
-  # Start previous version (if tagged)
-  docker run -d --name crm-frontend-old crm-frontend:previous
-  
-  # Or restore from backup
-  docker load < crm-frontend-backup.tar.gz
-  docker-compose up -d
-EOF
+cd /app/crm-frontend && \
+docker stop crm-frontend 2>/dev/null && \
+docker rm crm-frontend 2>/dev/null && \
+docker build -t crm-frontend:latest . && \
+docker run -d --name crm-frontend --restart unless-stopped -p 3005:3005 crm-frontend:latest && \
+sleep 5 && \
+echo "Deployment complete!" && \
+docker ps | grep crm-frontend
 ```
 
-## 📝 Maintenance
+## Environment Variables
 
-### Regular Tasks
+The app uses these environment variables (set in Dockerfile):
 
-1. **Weekly**: Check logs for errors
-2. **Monthly**: Update dependencies
-3. **Quarterly**: Review performance metrics
-4. **Annually**: Security audit
+```dockerfile
+ENV NODE_ENV=production
+ENV PORT=3005
+ENV HOSTNAME="0.0.0.0"
+ENV NEXT_PUBLIC_API_BASE=https://primeosys.com/crm-backend
+ENV NEXT_PUBLIC_BASE_PATH=/crm
+```
 
-### Cleanup
+To override at runtime, modify the `docker run` command:
 
 ```bash
-# Remove unused images
-docker image prune -a
-
-# Remove unused containers
-docker container prune
-
-# Remove unused volumes
-docker volume prune
-
-# Remove unused networks
-docker network prune
+docker run -d \
+  --name crm-frontend \
+  --restart unless-stopped \
+  -p 3005:3005 \
+  -e NEXT_PUBLIC_API_BASE=https://your-api.com/crm-backend \
+  crm-frontend:latest
 ```
 
-## 🎉 Deployment Complete!
+## Checking Logs
 
-Once deployed, the CRM frontend will be available at:
-- **URL**: https://primeosys.com/crm
-- **API**: https://primeosys.com/crm-backend
-- **Test Page**: https://primeosys.com/crm/test-optimizations
+```bash
+# View container logs
+docker logs crm-frontend
 
-## 📞 Support
+# Follow logs in real-time
+docker logs -f crm-frontend
 
-For issues or questions:
-1. Check container logs: `docker logs crm-frontend`
-2. Review this guide
-3. Check nginx configuration
-4. Verify API connectivity
+# Last 50 lines
+docker logs --tail 50 crm-frontend
+```
+
+## Troubleshooting
+
+### Container not starting?
+
+```bash
+docker logs crm-frontend
+```
+
+### Port 3005 already in use?
+
+```bash
+# Find what's using port 3005
+ss -tlnp | grep 3005
+
+# Kill it if needed
+fuser -k 3005/tcp
+```
+
+### Need to restart container?
+
+```bash
+docker restart crm-frontend
+```
+
+### Check if nginx is proxying correctly?
+
+```bash
+# Check nginx config
+cat /etc/nginx/sites-enabled/primeosys.com | grep -A10 "location /crm/"
+
+# Reload nginx if needed
+nginx -t && nginx -s reload
+```
+
+## Deployment Checklist
+
+- [ ] Code changes committed and pushed
+- [ ] Copy code to server via SCP
+- [ ] SSH into server
+- [ ] Stop old container
+- [ ] Build new image
+- [ ] Start new container
+- [ ] Test `https://primeosys.com/crm/login` returns 200
+- [ ] Test `https://primeosys.com/crm/dashboard` returns 200
+- [ ] Check `docker logs crm-frontend` for errors
+
+## Server Details
+
+- **Server IP**: `91.98.235.142`
+- **App Port**: `3005` (internal)
+- **Public URL**: `https://primeosys.com/crm/`
+- **SSH Key**: `C:\Users\Shubham\.ssh\ssh-key.key`
+- **Project Directory**: `/app/crm-frontend`
+- **Docker Image**: `crm-frontend:latest`
+- **API Backend**: `https://primeosys.com/crm-backend`
+- **Other Services**: 
+  - `indiamart-server` (PM2) — Do not touch
+  - CRM backend services (Docker) — Running on port 4200

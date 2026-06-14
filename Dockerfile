@@ -1,60 +1,43 @@
-# Stage 1: Install dependencies with caching
-FROM node:20-alpine AS deps
-WORKDIR /app
-
-# Copy only package files first for better caching
-COPY package.json package-lock.json* yarn.lock* pnpm-lock.yaml* ./
-COPY .npmrc ./
-
-# Install dependencies with optimizations
-RUN npm ci --legacy-peer-deps --prefer-offline --no-audit && \
-    npm cache clean --force
-
-# Stage 2: Build the application
+# Build stage
 FROM node:20-alpine AS builder
+
 WORKDIR /app
 
-# Copy dependencies from previous stage
-COPY --from=deps /app/node_modules ./node_modules
+# Copy package files
+COPY package.json package-lock.json ./
 
-# Copy source code
+# Install dependencies
+RUN npm ci
+
+# Copy application code
 COPY . .
 
-# Set build environment variables
-ENV NEXT_PUBLIC_BASE_PATH=/crm
+# Set environment variables for build
 ENV NEXT_PUBLIC_API_BASE=https://primeosys.com/crm-backend
-ENV NODE_ENV=production
-ENV NEXT_TELEMETRY_DISABLED=1
 
 # Build the application
 RUN npm run build
 
-# Stage 3: Production runner - minimal image
-FROM node:20-alpine AS runner
+# Production stage
+FROM node:20-alpine
+
 WORKDIR /app
 
-# Set environment variables
 ENV NODE_ENV=production
-ENV NEXT_TELEMETRY_DISABLED=1
-ENV PORT=3000
-ENV HOSTNAME="0.0.0.0"
+ENV PORT=3005
+ENV HOSTNAME=0.0.0.0
 
-# Create non-root user
-RUN addgroup --system --gid 1001 nodejs && \
-    adduser --system --uid 1001 nextjs
+# Copy standalone output
+COPY --from=builder /app/.next/standalone ./
+COPY --from=builder /app/.next/static ./.next/static
+COPY --from=builder /app/public ./public
 
-# Copy only necessary files from builder
-COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
-COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+# Expose port
+EXPOSE 3005
 
 # Health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD wget --no-verbose --tries=1 --spider http://localhost:3000/health || exit 1
+HEALTHCHECK --interval=30s --timeout=10s --retries=3 --start-period=40s \
+  CMD wget --no-verbose --tries=1 --spider http://localhost:3005/crm || exit 1
 
-# Switch to non-root user
-USER nextjs
-
-EXPOSE 3000
-
-# Use exec form to ensure proper signal handling
+# Start the standalone server
 CMD ["node", "server.js"]
