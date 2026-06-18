@@ -18,6 +18,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { BulkUploadModal } from "@/components/leads/bulk-upload-modal";
+import { AdvancedFilters } from "@/components/leads/advanced-filters";
 import {
   DropdownMenu,
   DropdownMenuTrigger,

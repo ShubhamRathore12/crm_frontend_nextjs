@@ -29,6 +29,8 @@ import {
 import { toast } from "sonner";
 import { animateFadeUp, animateCardsIn } from "@/lib/animations";
 import { LeadScoringCard } from "@/components/leads/lead-scoring-card";
+import { EmailCallLogger } from "@/components/interactions/email-call-logger";
+import { UnifiedTimeline } from "@/components/activity/unified-timeline";
 import {
   ChevronLeft,
   ChevronRight as ChevronRightIcon,
@@ -533,6 +535,8 @@ export default function LeadDetailPage() {
   const [isOpportunityOpen, setIsOpportunityOpen] = useState(false);
   const [isTaskOpen, setIsTaskOpen] = useState(false);
   const [isEmailOpen, setIsEmailOpen] = useState(false);
+  const [isEmailLogOpen, setIsEmailLogOpen] = useState(false);
+  const [isCallLogOpen, setIsCallLogOpen] = useState(false);
 
   const [editFormData, setEditFormData] = useState<any>({});
   const [taskForm, setTaskForm] = useState({ subject: "", dueDate: "", priority: "medium" });
@@ -862,37 +866,18 @@ export default function LeadDetailPage() {
 
               {/* Activity History */}
               <TabsContent value="activity" className="m-0 focus-visible:outline-none">
-                <TabToolbar tabKey="activity" placeholder="Search activities" search={search} setSearch={setSearch} filterValue={tabFilter} setFilterValue={setTabFilter} sortValue={tabSort} setSortValue={setTabSort} />
-                <div className="relative pl-6">
-                  <div className="absolute left-[9px] top-2 bottom-2 w-px bg-border" />
-                  <div className="space-y-5">
-                    {processList(dummy.activity).map((a) => {
-                      const meta: Record<string, { icon: any; color: string }> = {
-                        call: { icon: PhoneCall, color: "text-green-600 bg-green-500/10" },
-                        email: { icon: Mail, color: "text-blue-600 bg-blue-500/10" },
-                        page: { icon: Eye, color: "text-purple-600 bg-purple-500/10" },
-                        status: { icon: TrendingUp, color: "text-amber-600 bg-amber-500/10" },
-                        task: { icon: CheckCircle2, color: "text-primary bg-primary/10" },
-                      };
-                      const m = meta[a.type] ?? meta.task;
-                      return (
-                        <div key={a.id} className="relative flex gap-4">
-                          <div className={`absolute -left-6 h-5 w-5 rounded-full ring-4 ring-card flex items-center justify-center ${m.color}`}>
-                            <m.icon className="h-3 w-3" />
-                          </div>
-                          <div className="flex-1 pl-2">
-                            <div className="flex items-center justify-between gap-2">
-                              <p className="text-sm font-semibold">{a.title}</p>
-                              <span className="text-xs text-muted-foreground whitespace-nowrap flex items-center gap-1"><Clock className="h-3 w-3" />{a.time}</span>
-                            </div>
-                            <p className="text-sm text-muted-foreground mt-0.5">{a.desc}</p>
-                            <p className="text-[11px] text-muted-foreground/70 mt-1">by {a.by}</p>
-                          </div>
-                        </div>
-                      );
-                    })}
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="font-semibold">Activity Timeline</h3>
+                  <div className="flex gap-2">
+                    <Button size="sm" variant="outline" className="gap-2" onClick={() => setIsEmailLogOpen(true)}>
+                      <Mail className="h-4 w-4" /> Log Email
+                    </Button>
+                    <Button size="sm" variant="outline" className="gap-2" onClick={() => setIsCallLogOpen(true)}>
+                      <PhoneCall className="h-4 w-4" /> Log Call
+                    </Button>
                   </div>
                 </div>
+                <UnifiedTimeline contactId={lead.id} />
               </TabsContent>
 
               {/* Contact Details */}
@@ -1222,6 +1207,22 @@ export default function LeadDetailPage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Email/Call Loggers */}
+      <EmailCallLogger
+        contactId={lead.id}
+        type="email"
+        open={isEmailLogOpen}
+        onOpenChange={setIsEmailLogOpen}
+        onSuccess={() => refetchLeads()}
+      />
+      <EmailCallLogger
+        contactId={lead.id}
+        type="call"
+        open={isCallLogOpen}
+        onOpenChange={setIsCallLogOpen}
+        onSuccess={() => refetchLeads()}
+      />
     </div>
   );
 }
