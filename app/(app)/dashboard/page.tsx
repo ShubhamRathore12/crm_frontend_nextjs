@@ -155,9 +155,9 @@ export default function DashboardPage() {
   // Mock data for now
   const dashboardData = {
     totalLeads: overview?.leads?.total || leadStats?.total || 1247,
-    totalContacts: overview?.contacts?.total || 856,
+    totalContacts: 856,
     totalOpportunities: overview?.opportunities?.total || 89,
-    pipelineValue: overview?.opportunities?.totalPipelineValue || 1245000,
+    pipelineValue: overview?.opportunities?.total_value || 1245000,
     totalTasks: overview?.tasks?.total || 45,
     totalInteractions: overview?.interactions?.total || 312,
     emailOpenRate: "78%",

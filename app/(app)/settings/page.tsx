@@ -34,7 +34,13 @@ type User = {
 
 import { DynamicFieldsSettings } from "@/components/settings/dynamic-fields-settings";
 import { GroupManagement } from "@/components/settings/group-management";
+import { GeneralSettings } from "@/components/settings/general-settings";
+import { NotificationSettings } from "@/components/settings/notification-settings";
+import { SecuritySettings } from "@/components/settings/security-settings";
 import { ZapierConnector } from "@/components/integrations/zapier-connector";
+import { GoogleCalendarConnector } from "@/components/integrations/google-calendar-connector";
+import { SlackConnector } from "@/components/integrations/slack-connector";
+import { CalendlyConnector } from "@/components/integrations/calendly-connector";
 
 export default function SettingsPage() {
   const [connections, setConnections] = useState<Connection[]>([]);
@@ -42,9 +48,6 @@ export default function SettingsPage() {
   const [loading, setLoading] = useState(true);
   const [addingUser, setAddingUser] = useState(false);
   const [newUser, setNewUser] = useState({ name: "", email: "", role: "agent", password: "" });
-  const [adding, setAdding] = useState<"zapier" | "slack" | "calendly" | null>(null);
-  const [webhookUrl, setWebhookUrl] = useState("");
-  const [calendlyLink, setCalendlyLink] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
@@ -93,59 +96,6 @@ export default function SettingsPage() {
     }
   };
 
-  const addConnection = async () => {
-    setError(null);
-    setSuccess(null);
-    if (adding === "zapier" && webhookUrl.trim()) {
-      try {
-        await api.integrations.connections.create({
-          provider: "zapier",
-          name: "Zapier Webhook",
-          config: { webhook_url: webhookUrl.trim() },
-        });
-        setSuccess("Zapier webhook added. Events (e.g. lead created) will be sent here.");
-        setWebhookUrl("");
-        setAdding(null);
-        const list = await api.integrations.connections.list();
-        setConnections(list);
-      } catch (e) {
-        setError((e as Error).message);
-      }
-    } else if (adding === "slack" && webhookUrl.trim()) {
-      try {
-        await api.integrations.connections.create({
-          provider: "slack",
-          name: "Slack Incoming Webhook",
-          config: { webhook_url: webhookUrl.trim() },
-        });
-        setSuccess("Slack webhook added. Use Integrations or workflows to post messages.");
-        setWebhookUrl("");
-        setAdding(null);
-        const list = await api.integrations.connections.list();
-        setConnections(list);
-      } catch (e) {
-        setError((e as Error).message);
-      }
-    } else if (adding === "calendly" && calendlyLink.trim()) {
-      try {
-        await api.integrations.connections.create({
-          provider: "calendly",
-          name: "Calendly",
-          config: { scheduling_link: calendlyLink.trim() },
-        });
-        setSuccess("Calendly link saved. Use 'Arrange meeting' to send it to contacts.");
-        setCalendlyLink("");
-        setAdding(null);
-        const list = await api.integrations.connections.list();
-        setConnections(list);
-      } catch (e) {
-        setError((e as Error).message);
-      }
-    } else {
-      setError("Enter a valid URL.");
-    }
-  };
-
   return (
     <div className="p-4 md:p-6 space-y-4 md:space-y-6">
       <div className="flex justify-between items-end">
@@ -155,14 +105,21 @@ export default function SettingsPage() {
         </div>
       </div>
 
-      <Tabs defaultValue="integrations" className="space-y-4">
+      <Tabs defaultValue="general" className="space-y-4">
         <TabsList className="bg-muted/50 flex-wrap h-auto gap-1 p-1">
+          <TabsTrigger value="general" className="text-xs md:text-sm">General</TabsTrigger>
           <TabsTrigger value="integrations" className="text-xs md:text-sm">Integrations</TabsTrigger>
           <TabsTrigger value="users" className="text-xs md:text-sm">Users</TabsTrigger>
           <TabsTrigger value="fields" className="text-xs md:text-sm">Fields</TabsTrigger>
           <TabsTrigger value="groups" className="text-xs md:text-sm">Groups</TabsTrigger>
+          <TabsTrigger value="notifications" className="text-xs md:text-sm">Notifications</TabsTrigger>
+          <TabsTrigger value="security" className="text-xs md:text-sm">Security</TabsTrigger>
           <TabsTrigger value="maintenance" className="text-xs md:text-sm">Maintenance</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="general" className="space-y-4">
+          <GeneralSettings />
+        </TabsContent>
 
         <TabsContent value="integrations" className="space-y-4">
           <Card>
@@ -186,55 +143,14 @@ export default function SettingsPage() {
                 {/* Zapier */}
                 <ZapierConnector />
 
+                {/* Google Calendar & Meet */}
+                <GoogleCalendarConnector />
+
                 {/* Slack */}
-                <div className="rounded-lg border p-4 space-y-2">
-                  <h4 className="font-medium">Slack</h4>
-                  <p className="text-sm text-muted-foreground text-pretty">
-                    Post notifications to channels via Webhooks.
-                  </p>
-                  {adding === "slack" ? (
-                    <div className="space-y-2">
-                      <Input
-                        type="url"
-                        placeholder="Incoming Webhook URL"
-                        value={webhookUrl}
-                        onChange={(e) => setWebhookUrl(e.target.value)}
-                        className="text-xs"
-                      />
-                      <div className="flex gap-2">
-                        <Button size="sm" onClick={addConnection}>Save</Button>
-                        <Button size="sm" variant="outline" onClick={() => { setAdding(null); setWebhookUrl(""); }}>Cancel</Button>
-                      </div>
-                    </div>
-                  ) : (
-                    <Button size="sm" variant="outline" onClick={() => setAdding("slack")}>Add webhook</Button>
-                  )}
-                </div>
+                <SlackConnector />
 
                 {/* Calendly */}
-                <div className="rounded-lg border p-4 space-y-2">
-                  <h4 className="font-medium">Calendly</h4>
-                  <p className="text-sm text-muted-foreground text-pretty">
-                    Your scheduling link for arranging meetings.
-                  </p>
-                  {adding === "calendly" ? (
-                    <div className="space-y-2">
-                      <Input
-                        type="url"
-                        placeholder="Calendly Link"
-                        value={calendlyLink}
-                        onChange={(e) => setCalendlyLink(e.target.value)}
-                        className="text-xs"
-                      />
-                      <div className="flex gap-2">
-                        <Button size="sm" onClick={addConnection}>Save</Button>
-                        <Button size="sm" variant="outline" onClick={() => { setAdding(null); setCalendlyLink(""); }}>Cancel</Button>
-                      </div>
-                    </div>
-                  ) : (
-                    <Button size="sm" variant="outline" onClick={() => setAdding("calendly")}>Add link</Button>
-                  )}
-                </div>
+                <CalendlyConnector />
               </div>
             </CardContent>
           </Card>
@@ -435,6 +351,14 @@ export default function SettingsPage() {
 
         <TabsContent value="groups" className="space-y-4">
           <GroupManagement />
+        </TabsContent>
+
+        <TabsContent value="notifications" className="space-y-4">
+          <NotificationSettings />
+        </TabsContent>
+
+        <TabsContent value="security" className="space-y-4">
+          <SecuritySettings />
         </TabsContent>
 
         <TabsContent value="maintenance" className="space-y-4">

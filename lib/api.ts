@@ -317,6 +317,28 @@ export const api = {
         method: "POST",
         body: JSON.stringify({ contact_email }),
       }),
+    googleMeet: (body?: { summary?: string; start_time?: string; end_time?: string; attendee_email?: string }) =>
+      request<{ link: string; real: boolean; event_link: string | null; event_id: string | null }>(
+        "/integrations/google/meet",
+        { method: "POST", body: JSON.stringify(body ?? {}) }
+      ),
+    google: {
+      status: () =>
+        request<{ provider: string; connected: boolean; mode: string; oauth_available: boolean }>(
+          "/integrations/google/status"
+        ),
+      authUrl: (redirectUri: string) =>
+        request<{ url: string }>("/integrations/google/auth-url", {
+          params: { redirect_uri: redirectUri },
+        }),
+      connect: (code: string, redirectUri: string) =>
+        request<{ ok: boolean; connected: boolean }>("/integrations/google/connect", {
+          method: "POST",
+          body: JSON.stringify({ code, redirect_uri: redirectUri }),
+        }),
+      disconnect: () =>
+        request<{ ok: boolean }>("/integrations/google/disconnect", { method: "POST" }),
+    },
     slackNotify: (message: string, channel?: string) =>
       request<{ ok: boolean }>("/integrations/slack/notify", {
         method: "POST",
@@ -327,6 +349,25 @@ export const api = {
         request<Integration[]>("/integrations"),
       create: (body: { provider: string; name?: string; config: Record<string, string> }) =>
         request<Integration>("/integrations", { method: "POST", body: JSON.stringify(body) }),
+    },
+  },
+
+  // ── App Settings ──
+  //
+  // General / Notifications / Security preferences are persisted via the
+  // dedicated backend /settings endpoint (app_settings table, JSONB value per
+  // group key) so they round-trip to the DB and sync across devices.
+  settings: {
+    get: async <T extends Record<string, unknown>>(key: string): Promise<T | null> => {
+      const res = await request<{ data: T | null }>(`/settings/${key}`);
+      return res.data ?? null;
+    },
+    save: async <T extends Record<string, unknown>>(key: string, config: T): Promise<T> => {
+      const res = await request<{ data: T }>(`/settings/${key}`, {
+        method: "PUT",
+        body: JSON.stringify({ value: config }),
+      });
+      return res.data;
     },
   },
 
@@ -402,16 +443,101 @@ export const api = {
     delete: (id: string) => request<{ ok: boolean }>(`/integrations/fields/${id}`, { method: "DELETE" }),
   },
 
-  // ── Emails (Inbox) ──
+  // ── Emails (Inbox / Outbox) ──
   emails: {
     list: () => request<InboundEmail[]>("/email-inbound/list"),
+    outbox: () => request<InboundEmail[]>("/email-inbound/outbox"),
     detail: (id: string) => request<InboundEmailDetail>(`/email-inbound/${id}`),
+    send: (body: {
+      to_email: string;
+      to_name?: string;
+      subject?: string;
+      body: string;
+      contact_id?: string;
+      include_meet_link?: boolean;
+    }) =>
+      request<{ ok: boolean; id: string; message_id: string; meet_link: string | null; message: string }>(
+        "/email-inbound/send",
+        { method: "POST", body: JSON.stringify(body) }
+      ),
+    reply: (id: string, body: { body: string; include_meet_link?: boolean }) =>
+      request<{ ok: boolean; message_id: string; meet_link: string | null; message: string }>(
+        `/email-inbound/${id}/reply`,
+        { method: "POST", body: JSON.stringify(body) }
+      ),
+    sendMeetLink: (id: string, note?: string) =>
+      request<{ ok: boolean; message_id: string; meet_link: string; message: string }>(
+        `/email-inbound/${id}/meet`,
+        { method: "POST", body: JSON.stringify({ note }) }
+      ),
+    setStatus: (id: string, status: string) =>
+      request<{ ok: boolean }>(`/email-inbound/${id}/status`, {
+        method: "PUT",
+        body: JSON.stringify({ status }),
+      }),
+  },
+
+  // ── Calendar ──
+  calendar: {
+    events: {
+      list: (params?: { start?: string; end?: string; event_type?: string }) =>
+        request<{ data: CalendarEvent[] }>(
+          "/calendar/events",
+          params ? { params: params as Record<string, string> } : undefined
+        ).then((res) => (res as any).data ?? res),
+      get: (id: string) =>
+        request<{ data: CalendarEvent }>(`/calendar/events/${id}`).then((res) => (res as any).data ?? res),
+      create: (body: CreateCalendarEvent) =>
+        request<{ data: CalendarEvent }>("/calendar/events", {
+          method: "POST",
+          body: JSON.stringify(body),
+        }).then((res) => (res as any).data ?? res),
+      update: (id: string, body: Partial<CreateCalendarEvent>) =>
+        request<{ data: CalendarEvent }>(`/calendar/events/${id}`, {
+          method: "PUT",
+          body: JSON.stringify(body),
+        }).then((res) => (res as any).data ?? res),
+      delete: (id: string) =>
+        request<{ ok: boolean }>(`/calendar/events/${id}`, { method: "DELETE" }),
+    },
   },
 
   // ── Maintenance ──
   maintenance: {
     runArchive: () => request<unknown>("/maintenance/archive/run", { method: "POST" }),
   },
+};
+
+export type CalendarEvent = {
+  id: string;
+  title: string;
+  description: string | null;
+  event_type: "event" | "meeting" | "call" | "task" | "reminder";
+  start_time: string;
+  end_time: string | null;
+  all_day: boolean;
+  location: string | null;
+  meet_link: string | null;
+  contact_id: string | null;
+  lead_id: string | null;
+  assigned_to: string | null;
+  status: "scheduled" | "completed" | "cancelled";
+  created_at: string;
+  updated_at: string;
+};
+
+export type CreateCalendarEvent = {
+  title: string;
+  description?: string;
+  event_type?: string;
+  start_time: string;
+  end_time?: string;
+  all_day?: boolean;
+  location?: string;
+  contact_id?: string;
+  lead_id?: string;
+  assigned_to?: string;
+  add_meet_link?: boolean;
 };
 
 // ── Lead normalization ──

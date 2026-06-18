@@ -75,7 +75,8 @@ export function usePerformanceTracking(componentName: string) {
   return {
     startTimer: (name?: string) => performanceMonitor.startTimer(name || componentName),
     endTimer: (timer?: ReturnType<typeof performanceMonitor.startTimer>) => {
-      if (timer) timer.end();
+      if (timer) return timer.end();
+      return 0;
     },
     getMetrics: () => performanceMonitor.getMetrics(componentName),
   };

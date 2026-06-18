@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { api } from "@/lib/api";
 
-type Contact = { id: string; name: string; phone: string | null };
+type Contact = { id: string; name: string; mobile: string | null };
 
 export default function NewInteractionPage() {
   const [contacts, setContacts] = useState<Contact[]>([]);

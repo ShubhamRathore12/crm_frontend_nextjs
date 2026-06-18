@@ -295,7 +295,7 @@ export default function LeadsPage() {
         const contact = await api.contacts.create({
           name: qaContactName,
           email: qaContactEmail,
-          phone: qaContactPhone,
+          mobile: qaContactPhone,
           company: qaContactCompany || undefined,
         });
         finalContactId = contact.id;

@@ -1214,14 +1214,14 @@ export default function LeadDetailPage() {
         type="email"
         open={isEmailLogOpen}
         onOpenChange={setIsEmailLogOpen}
-        onSuccess={() => refetchLeads()}
+        onSuccess={() => refetch()}
       />
       <EmailCallLogger
         contactId={lead.id}
         type="call"
         open={isCallLogOpen}
         onOpenChange={setIsCallLogOpen}
-        onSuccess={() => refetchLeads()}
+        onSuccess={() => refetch()}
       />
     </div>
   );
