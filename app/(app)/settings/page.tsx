@@ -34,6 +34,7 @@ type User = {
 
 import { DynamicFieldsSettings } from "@/components/settings/dynamic-fields-settings";
 import { GroupManagement } from "@/components/settings/group-management";
+import { ZapierConnector } from "@/components/integrations/zapier-connector";
 
 export default function SettingsPage() {
   const [connections, setConnections] = useState<Connection[]>([]);
@@ -181,31 +182,9 @@ export default function SettingsPage() {
                 </p>
               )}
 
-              <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="grid gap-4 grid-cols-1">
                 {/* Zapier */}
-                <div className="rounded-lg border p-4 space-y-2">
-                  <h4 className="font-medium">Zapier</h4>
-                  <p className="text-sm text-muted-foreground text-pretty">
-                    Outbound webhooks for lead and interaction events.
-                  </p>
-                  {adding === "zapier" ? (
-                    <div className="space-y-2">
-                      <Input
-                        type="url"
-                        placeholder="Webhook URL"
-                        value={webhookUrl}
-                        onChange={(e) => setWebhookUrl(e.target.value)}
-                        className="text-xs"
-                      />
-                      <div className="flex gap-2">
-                        <Button size="sm" onClick={addConnection}>Save</Button>
-                        <Button size="sm" variant="outline" onClick={() => { setAdding(null); setWebhookUrl(""); }}>Cancel</Button>
-                      </div>
-                    </div>
-                  ) : (
-                    <Button size="sm" variant="outline" onClick={() => setAdding("zapier")}>Add webhook</Button>
-                  )}
-                </div>
+                <ZapierConnector />
 
                 {/* Slack */}
                 <div className="rounded-lg border p-4 space-y-2">
