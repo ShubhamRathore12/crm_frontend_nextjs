@@ -20,8 +20,11 @@ export default function NewWorkflowPage() {
   const [trigger, setTrigger] = useState("lead.created");
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
-  const [selectedNode, setSelectedNode] = useState<Node | null>(null);
-  
+  // Track the selected node by id and derive the live object from `nodes`, so
+  // edits made in the config panel are reflected on the canvas and back in the
+  // panel immediately (single source of truth).
+  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+
   const [nodes, setNodes] = useState<Node[]>([
     {
       id: "trigger",
@@ -36,24 +39,34 @@ export default function NewWorkflowPage() {
 
   const [edges, setEdges] = useState<Edge[]>([]);
 
+  const selectedNode = useMemo(
+    () => nodes.find((n) => n.id === selectedNodeId) ?? null,
+    [nodes, selectedNodeId]
+  );
+
+  // Serialize the visual graph into the backend workflow definition, preserving
+  // the if/else branch (true/false) each edge leaves a condition node from.
+  const buildDefinition = () => ({
+    nodes: nodes.map((node) => ({
+      id: node.id,
+      node_type: node.type,
+      position: node.position,
+      config: node.data.config || {},
+    })),
+    edges: edges.map((edge) => ({
+      id: edge.id,
+      source: edge.source,
+      target: edge.target,
+      branch: (edge.data?.branch ?? edge.sourceHandle) || null,
+      condition: edge.data?.condition,
+    })),
+  });
+
   const save = async () => {
     setSaving(true);
     setStatus(null);
     try {
-      const workflowDefinition = {
-        nodes: nodes.map(node => ({
-          id: node.id,
-          node_type: node.type,
-          position: node.position,
-          config: node.data.config || {},
-        })),
-        edges: edges.map(edge => ({
-          id: edge.id,
-          source: edge.source,
-          target: edge.target,
-          condition: edge.data?.condition,
-        })),
-      };
+      const workflowDefinition = buildDefinition();
 
       await api.workflows.create({
         name: name.trim(),
@@ -73,20 +86,7 @@ export default function NewWorkflowPage() {
     setStatus("Testing workflow execution...");
     try {
       // Create a test workflow run
-      const workflowDefinition = {
-        nodes: nodes.map(node => ({
-          id: node.id,
-          node_type: node.type,
-          position: node.position,
-          config: node.data.config || {},
-        })),
-        edges: edges.map(edge => ({
-          id: edge.id,
-          source: edge.source,
-          target: edge.target,
-          condition: edge.data?.condition,
-        })),
-      };
+      const workflowDefinition = buildDefinition();
 
       // First create the workflow
       const workflow = await api.workflows.create({
@@ -125,9 +125,9 @@ export default function NewWorkflowPage() {
   };
 
   return (
-    <div className="h-screen flex flex-col">
+    <div className="h-screen flex flex-col bg-background">
       {/* Header */}
-      <div className="border-b bg-white p-4">
+      <div className="border-b border-border bg-card p-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <Button variant="outline" size="sm" asChild>
@@ -157,7 +157,7 @@ export default function NewWorkflowPage() {
       </div>
 
       {/* Configuration Bar */}
-      <div className="border-b bg-gray-50 p-4">
+      <div className="border-b border-border bg-muted/30 p-4">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div>
             <Label htmlFor="workflow-name">Name</Label>
@@ -196,7 +196,7 @@ export default function NewWorkflowPage() {
           <div className="flex items-end">
             {status && (
               <div className={`text-sm p-2 rounded ${
-                status.includes("success") ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
+                status.includes("success") ? "bg-green-500/15 text-green-600 dark:text-green-400" : "bg-red-500/15 text-red-600 dark:text-red-400"
               }`}>
                 {status}
               </div>
@@ -214,13 +214,14 @@ export default function NewWorkflowPage() {
             edges={edges}
             onNodesChange={setNodes}
             onEdgesChange={setEdges}
+            onNodeClick={(node) => setSelectedNodeId(node.id)}
           />
         </div>
 
         {/* Node Configuration Panel */}
         <NodeConfigPanel
           node={selectedNode}
-          onClose={() => setSelectedNode(null)}
+          onClose={() => setSelectedNodeId(null)}
           onUpdate={handleNodeUpdate}
         />
       </div>

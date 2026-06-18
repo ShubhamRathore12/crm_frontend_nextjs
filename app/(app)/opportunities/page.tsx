@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Plus, MoreHorizontal, DollarSign, Calendar, User, ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { PipelineBoard } from "@/components/opportunities/pipeline-board";
 
 const STAGES = [
   { id: "qualification", label: "Qualification", color: "bg-blue-500/10 text-blue-500 border-blue-500/20" },
@@ -86,6 +87,11 @@ export default function OpportunitiesPage() {
         <Button size="sm" className="md:size-default gap-2 bg-primary hover:bg-primary/90 shadow-lg shadow-primary/20 self-start sm:self-auto">
           <Plus className="h-4 w-4" /> New Opportunity
         </Button>
+      </div>
+
+      {/* Pipeline Summary */}
+      <div className="bg-muted/20 rounded-xl border border-border/60 p-4">
+        <PipelineBoard />
       </div>
 
       <div className="flex-1 min-h-0 overflow-x-auto pb-4 -mx-4 px-4 md:mx-0 md:px-0">

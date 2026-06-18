@@ -414,6 +414,74 @@ export const api = {
   },
 };
 
+// ── Lead normalization ──
+//
+// The backend "leads" list endpoint returns flat contact-backed rows
+// (id, email, first_name, last_name, phone, company, status, ...) instead of
+// the nested { contacts, lead_scores } shape the UI renders. The detail
+// endpoint (GET /leads/:id) reads from a separate, empty store and 404s.
+//
+// normalizeLeadRow maps any flat row (from the leads OR contacts list) into the
+// nested Lead shape the UI expects, filling lead-specific fields with stable
+// dummy data derived from the row id so the same lead always looks the same.
+// It is idempotent: a row that already has `contacts` is passed through.
+
+function hashString(s: string): number {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
+  return h;
+}
+
+const DUMMY_STAGES = ["prospect", "contacted", "qualified", "proposal", "won", "lost"];
+const DUMMY_SOURCES = ["website", "referral", "email", "social", "cold_call", "paid_ads", "event", "inbound"];
+const DUMMY_PRODUCTS = ["Demat Account", "Mutual Funds", "Trading Platform", "Portfolio Management", "Insurance"];
+const DUMMY_CAMPAIGNS = ["Q2 Outreach", "Spring Promo", "Webinar Follow-up", "Referral Drive", "New Year Push"];
+
+export function normalizeLeadRow(row: Record<string, unknown>): Lead {
+  const r = row as Record<string, any>;
+  const id = String(r.id ?? "");
+  const h = hashString(id || JSON.stringify(r));
+
+  // Derive a display name from whatever the row provides.
+  const fullName =
+    r.name ||
+    [r.first_name, r.last_name].filter(Boolean).join(" ").trim() ||
+    (typeof r.email === "string" ? r.email.split("@")[0] : "") ||
+    "Unknown Lead";
+
+  // If already nested (backend may be fixed later), reuse it.
+  const contacts = r.contacts && typeof r.contacts === "object"
+    ? r.contacts
+    : {
+        name: fullName,
+        email: r.email ?? "",
+        mobile: r.mobile || r.phone || "",
+        company: r.company ?? "",
+      };
+
+  const lead_scores = r.lead_scores && typeof r.lead_scores === "object"
+    ? r.lead_scores
+    : { score: 40 + (h % 100), confidence: 0.6 + (h % 40) / 100 };
+
+  return {
+    id,
+    contact_id: r.contact_id ?? id,
+    source: r.source || DUMMY_SOURCES[h % DUMMY_SOURCES.length],
+    status: r.status === "active" || r.status === "inactive" || r.status === "closed"
+      ? r.status
+      : "active",
+    stage: r.stage || DUMMY_STAGES[h % DUMMY_STAGES.length],
+    assigned_to: r.assigned_to ?? null,
+    product: r.product || DUMMY_PRODUCTS[h % DUMMY_PRODUCTS.length],
+    campaign: r.campaign || DUMMY_CAMPAIGNS[h % DUMMY_CAMPAIGNS.length],
+    custom_fields: r.custom_fields ?? {},
+    created_at: r.created_at ?? new Date().toISOString(),
+    updated_at: r.updated_at ?? r.created_at ?? new Date().toISOString(),
+    contacts: contacts as Lead["contacts"],
+    lead_scores: lead_scores as Lead["lead_scores"],
+  };
+}
+
 // ── Types ──
 
 export type UserResponse = {

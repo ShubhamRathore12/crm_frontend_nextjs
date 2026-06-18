@@ -19,6 +19,8 @@ import {
   LogOut,
   Menu,
   X,
+  ChevronsLeft,
+  ChevronsRight,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
@@ -39,23 +41,31 @@ const nav = [
   { href: "/settings", label: "Settings", icon: Settings },
 ];
 
+// Detail pages (e.g. /leads/<id>) need the room — auto-collapse the rail there.
+function isDetailRoute(pathname: string) {
+  return (
+    /^\/(leads|opportunities|contacts|interactions)\/[^/]+$/.test(pathname) &&
+    !pathname.endsWith("/new")
+  );
+}
+
 export function AppSidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
+  const [hovered, setHovered] = useState(false);
 
-  // Close mobile menu on route change
+  // Close mobile menu + sync collapse state to the current route.
   useEffect(() => {
     setMobileOpen(false);
+    setHovered(false);
+    setCollapsed(isDetailRoute(pathname));
   }, [pathname]);
 
   // Prevent body scroll when mobile menu is open
   useEffect(() => {
-    if (mobileOpen) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "";
-    }
+    document.body.style.overflow = mobileOpen ? "hidden" : "";
     return () => {
       document.body.style.overflow = "";
     };
@@ -67,51 +77,86 @@ export function AppSidebar() {
     router.push("/login");
   };
 
-  const sidebarContent = (
+  // showLabels = true → full rail (logo text, labels). false → icon-only rail.
+  const renderContent = (showLabels: boolean) => (
     <>
-      <div className="p-4 border-b border-border flex items-center justify-between">
-        <Link href="/dashboard" className="font-semibold text-lg text-primary">
-          CRM
-        </Link>
-        <button
-          onClick={() => setMobileOpen(false)}
-          className="md:hidden p-1 rounded-md hover:bg-secondary"
+      <div className="h-[57px] px-3 border-b border-border flex items-center justify-between shrink-0">
+        <Link
+          href="/dashboard"
+          className="flex items-center gap-2.5 overflow-hidden font-semibold text-lg text-primary"
         >
-          <X className="h-5 w-5" />
-        </button>
+          <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-primary text-primary-foreground text-sm font-bold">
+            C
+          </span>
+          {showLabels && <span className="whitespace-nowrap">CRM</span>}
+        </Link>
+        {showLabels && (
+          <div className="flex items-center">
+            <button
+              onClick={() => setMobileOpen(false)}
+              className="md:hidden p-1 rounded-md hover:bg-secondary"
+              aria-label="Close menu"
+            >
+              <X className="h-5 w-5" />
+            </button>
+            <button
+              onClick={() => {
+                setCollapsed((c) => !c);
+                setHovered(false);
+              }}
+              className="hidden md:flex p-1.5 rounded-md text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors"
+              title={collapsed ? "Pin open" : "Collapse sidebar"}
+              aria-label="Toggle sidebar"
+            >
+              {collapsed ? <ChevronsRight className="h-4 w-4" /> : <ChevronsLeft className="h-4 w-4" />}
+            </button>
+          </div>
+        )}
       </div>
-      <nav className="flex-1 p-2 space-y-0.5 overflow-y-auto">
+
+      <nav className="flex-1 p-2 space-y-0.5 overflow-y-auto overflow-x-hidden">
         {nav.map((item) => {
           const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
           return (
             <Link
               key={item.href}
               href={item.href}
+              prefetch
+              onMouseEnter={() => router.prefetch(item.href)}
+              title={!showLabels ? item.label : undefined}
               className={cn(
-                "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors",
+                "flex items-center gap-3 rounded-md py-2 text-sm transition-colors",
+                showLabels ? "px-3" : "justify-center px-0",
                 isActive
                   ? "bg-primary text-primary-foreground"
                   : "text-muted-foreground hover:bg-secondary hover:text-foreground"
               )}
             >
               <item.icon className="h-4 w-4 shrink-0" />
-              {item.label}
+              {showLabels && <span className="truncate">{item.label}</span>}
             </Link>
           );
         })}
       </nav>
+
       <div className="p-2 border-t border-border space-y-0.5">
-        <ThemeToggle />
+        <ThemeToggle compact={!showLabels} />
         <button
           onClick={handleLogout}
-          className="flex items-center gap-3 rounded-md px-3 py-2 text-sm text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors w-full"
+          title={!showLabels ? "Logout" : undefined}
+          className={cn(
+            "flex items-center gap-3 rounded-md py-2 text-sm text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors w-full",
+            showLabels ? "px-3" : "justify-center px-0"
+          )}
         >
           <LogOut className="h-4 w-4 shrink-0" />
-          Logout
+          {showLabels && "Logout"}
         </button>
       </div>
     </>
   );
+
+  const expanded = !collapsed || hovered;
 
   return (
     <>
@@ -120,6 +165,7 @@ export function AppSidebar() {
         <button
           onClick={() => setMobileOpen(true)}
           className="p-1.5 rounded-md hover:bg-secondary"
+          aria-label="Open menu"
         >
           <Menu className="h-5 w-5" />
         </button>
@@ -143,12 +189,28 @@ export function AppSidebar() {
           mobileOpen ? "translate-x-0" : "-translate-x-full"
         )}
       >
-        {sidebarContent}
+        {renderContent(true)}
       </aside>
 
-      {/* Desktop sidebar */}
-      <aside className="hidden md:flex w-56 border-r border-border bg-card flex-col shrink-0">
-        {sidebarContent}
+      {/* Desktop sidebar — outer reserves width in flow; inner is fixed so the
+          hover-expanded rail floats over content instead of shifting layout. */}
+      <aside
+        className={cn(
+          "hidden md:block shrink-0 transition-[width] duration-200 ease-out",
+          collapsed ? "w-16" : "w-56"
+        )}
+      >
+        <div
+          onMouseEnter={() => collapsed && setHovered(true)}
+          onMouseLeave={() => setHovered(false)}
+          className={cn(
+            "fixed top-0 left-0 z-30 h-screen bg-card border-r border-border flex flex-col transition-[width] duration-200 ease-out",
+            expanded ? "w-56" : "w-16",
+            collapsed && hovered && "shadow-2xl shadow-black/25"
+          )}
+        >
+          {renderContent(expanded)}
+        </div>
       </aside>
     </>
   );

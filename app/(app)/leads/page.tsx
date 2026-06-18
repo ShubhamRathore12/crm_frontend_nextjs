@@ -1,8 +1,16 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useMemo } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
-import { api, Lead, Contact, User } from "@/lib/api";
+import { api, Lead } from "@/lib/api";
+import {
+  useLeadsList,
+  useAgents,
+  useContactsList,
+  useLeadStats,
+  useLeadInvalidators,
+} from "@/lib/queries";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -50,20 +58,8 @@ import {
 
 export default function LeadsPage() {
   // --- State Variables ---
-  const [leads, setLeads] = useState<Lead[]>([]);
-  const [totalLeads, setTotalLeads] = useState(0);
   const [page, setPage] = useState(1);
   const [limit] = useState(10);
-  const [totalPages, setTotalPages] = useState(1);
-  const [loading, setLoading] = useState(true);
-
-  // Stats
-  const [stats, setStats] = useState({
-    total: 0,
-    newToday: 0,
-    avgScore: 0,
-    conversionRate: 0,
-  });
 
   // Filter values
   const [searchQuery, setSearchQuery] = useState("");
@@ -72,9 +68,47 @@ export default function LeadsPage() {
   const [filterSource, setFilterSource] = useState("");
   const [filterAssignee, setFilterAssignee] = useState("");
 
-  // Metadata Lists
-  const [agents, setAgents] = useState<User[]>([]);
-  const [contacts, setContacts] = useState<Contact[]>([]);
+  // Bulk assign
+  const [selectedLeads, setSelectedLeads] = useState<Set<string>>(new Set());
+  const [bulkAssignOpen, setBulkAssignOpen] = useState(false);
+  const [bulkAssigneeId, setBulkAssigneeId] = useState("");
+
+  // --- Data (React Query: cached across navigation, fetched in parallel) ---
+  const leadsParams = useMemo(
+    () => ({
+      page: page.toString(),
+      limit: limit.toString(),
+      search: searchQuery || undefined,
+      status: filterStatus || undefined,
+      stage: filterStage || undefined,
+      source: filterSource || undefined,
+      assigned_to: filterAssignee || undefined,
+    }),
+    [page, limit, searchQuery, filterStatus, filterStage, filterSource, filterAssignee]
+  );
+
+  const { data: leadsData, isLoading: loading, isFetching, refetch: refetchLeads } =
+    useLeadsList(leadsParams);
+  const leads = leadsData?.leads ?? [];
+  const totalLeads = leadsData?.total ?? 0;
+  const totalPages = leadsData?.pages ?? 1;
+
+  const { data: agents = [] } = useAgents();
+  const { data: contacts = [] } = useContactsList();
+  const { data: stats = { total: 0, newToday: 0, avgScore: 0, conversionRate: 0 } } =
+    useLeadStats();
+
+  const { invalidateStats } = useLeadInvalidators();
+  const queryClient = useQueryClient();
+
+  // Thin wrappers so existing mutation handlers keep working unchanged: they
+  // invalidate the React Query cache, which triggers a background refetch.
+  const fetchLeads = () => refetchLeads();
+  const fetchStatsAndMetadata = () => {
+    invalidateStats();
+    queryClient.invalidateQueries({ queryKey: ["contacts"] });
+    queryClient.invalidateQueries({ queryKey: ["agents"] });
+  };
 
   // Selection
   const [selectedLeadIds, setSelectedLeadIds] = useState<string[]>([]);
@@ -126,6 +160,15 @@ export default function LeadsPage() {
     }
   }, []);
 
+  // Stash the clicked lead so the detail page can render instantly and never
+  // show "Lead not found", even if its API calls fail (expired token, etc.).
+  const stashLead = (lead: Lead) => {
+    if (typeof window === "undefined") return;
+    try {
+      sessionStorage.setItem(`lead:${lead.id}`, JSON.stringify(lead));
+    } catch {}
+  };
+
   const toggleStarLead = (id: string) => {
     setStarredLeadIds((prev) => {
       const updated = prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id];
@@ -173,91 +216,6 @@ export default function LeadsPage() {
   // Bulk Actions Form
   const [bulkAgentId, setBulkAgentId] = useState("");
   const [bulkStage, setBulkStage] = useState("");
-
-  // --- Fetching Data ---
-  const fetchLeads = useCallback(async () => {
-    setLoading(true);
-    try {
-      const res = await api.leads.list({
-        page: page.toString(),
-        limit: limit.toString(),
-        search: searchQuery || undefined,
-        status: filterStatus || undefined,
-        stage: filterStage || undefined,
-        source: filterSource || undefined,
-        assigned_to: filterAssignee || undefined,
-      });
-      
-      setLeads(res.data ?? []);
-      setTotalLeads(res.total ?? 0);
-      setTotalPages(res.pages ?? 1);
-    } catch (err) {
-      console.error("Failed to load leads", err);
-      // Toast message on error
-      toast.error("Failed to fetch leads from server");
-      // Fallback mockup
-      setLeads([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [page, limit, searchQuery, filterStage, filterStatus, filterSource, filterAssignee]);
-
-  const fetchStatsAndMetadata = useCallback(async () => {
-    try {
-      // Fetch Agents
-      try {
-        const agentsRes = await api.users.agents();
-        if (Array.isArray(agentsRes)) {
-          setAgents(agentsRes);
-        } else if (agentsRes && typeof agentsRes === 'object') {
-          setAgents(Array.isArray(agentsRes.data) ? agentsRes.data : []);
-        } else {
-          setAgents([]);
-        }
-      } catch (err) {
-        console.error("Failed to fetch agents", err);
-        setAgents([]);
-      }
-
-      // Fetch Contacts for dropdown
-      try {
-        const contactsRes = await api.contacts.list({ limit: "100" });
-        setContacts(contactsRes.data ?? []);
-      } catch (err) {
-        console.error("Failed to fetch contacts", err);
-        setContacts([]);
-      }
-
-      // Fetch Lead Stats
-      try {
-        const statsRes = await api.leads.stats();
-        if (statsRes) {
-          const wonCount = statsRes.by_status?.find(s => s.label.toLowerCase() === "won")?.count || 0;
-          const totalLeadsCount = statsRes.total || 1;
-          const convRate = Math.round((wonCount / totalLeadsCount) * 100);
-          
-          setStats({
-            total: statsRes.total || 0,
-            newToday: statsRes.growth?.[statsRes.growth.length - 1]?.value || 0,
-            avgScore: 88, // Mock average score fallback
-            conversionRate: convRate || 14,
-          });
-        }
-      } catch (err) {
-        console.error("Failed to fetch stats", err);
-      }
-    } catch (err) {
-      console.error("Error loading stats/metadata", err);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchLeads();
-  }, [fetchLeads]);
-
-  useEffect(() => {
-    fetchStatsAndMetadata();
-  }, [fetchStatsAndMetadata]);
 
   // --- Actions ---
 
@@ -603,8 +561,25 @@ export default function LeadsPage() {
     return "bg-emerald-500/10 text-emerald-500 border-emerald-500/20";
   };
 
+  // The leads list endpoint returns flat rows without a full name. Enrich each
+  // lead with the richer contact record (loaded for the dropdown) so the table
+  // shows the real name/email/phone/company instead of an email prefix.
+  const contactById = new Map(contacts.map((c) => [c.id, c]));
+
   // Client-side filtering based on active tab
-  const displayedLeads = leads.filter((lead) => {
+  const displayedLeads = leads.map((lead) => {
+    const c = contactById.get(lead.id) || contactById.get(lead.contact_id || "");
+    if (!c) return lead;
+    return {
+      ...lead,
+      contacts: {
+        name: c.name || lead.contacts?.name,
+        email: c.email || lead.contacts?.email,
+        mobile: c.mobile || lead.contacts?.mobile,
+        company: c.company || (lead.contacts as any)?.company,
+      },
+    } as Lead;
+  }).filter((lead) => {
     if (activeTab === "my_leads" && currentUser && lead.assigned_to !== currentUser.id) {
       return false;
     }
@@ -863,7 +838,7 @@ export default function LeadsPage() {
               </Button>
 
               <Button onClick={fetchLeads} variant="ghost" size="icon" className="h-9 w-9 hover:bg-secondary shrink-0" title="Refresh leads data">
-                <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+                <RefreshCw className={`h-4 w-4 ${loading || isFetching ? 'animate-spin' : ''}`} />
               </Button>
             </div>
           </div>
@@ -1117,8 +1092,9 @@ export default function LeadsPage() {
                       {/* Name / Info */}
                       <td className="p-4">
                         <div className="flex flex-col space-y-1">
-                          <Link 
+                          <Link
                             href={`/leads/${lead.id}`}
+                            onClick={() => stashLead(lead)}
                             className="font-bold text-foreground hover:text-primary hover:underline transition-colors text-sm flex items-center gap-1.5 w-fit"
                           >
                             {lead.contacts?.name || "Unlinked Contact"}
@@ -1278,7 +1254,7 @@ export default function LeadsPage() {
                               <DropdownMenuItem onClick={() => handleEditClick(lead)} className="cursor-pointer gap-2">
                                 <Edit2 className="h-3.5 w-3.5 text-muted-foreground" /> Edit Lead
                               </DropdownMenuItem>
-                              <Link href={`/leads/${lead.id}`}>
+                              <Link href={`/leads/${lead.id}`} onClick={() => stashLead(lead)}>
                                 <DropdownMenuItem className="cursor-pointer gap-2">
                                   <ArrowUpRight className="h-3.5 w-3.5 text-muted-foreground" /> View Details
                                 </DropdownMenuItem>

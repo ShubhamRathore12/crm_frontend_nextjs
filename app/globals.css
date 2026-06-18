@@ -125,3 +125,13 @@
   background-size: 200% 100%;
   animation: shimmer 1.5s ease-in-out infinite;
 }
+
+/* Hide native scrollbar while keeping the element scrollable
+   (used by the scrollable tab rail, which has its own chevrons). */
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}

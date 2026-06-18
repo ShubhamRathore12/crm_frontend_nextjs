@@ -17,6 +17,20 @@ interface NodeConfigPanelProps {
   onUpdate: (nodeId: string, config: any) => void;
 }
 
+// Operator symbols for the live condition preview.
+const OP_PREVIEW: Record<string, string> = {
+  eq: "=",
+  neq: "≠",
+  gt: ">",
+  gte: "≥",
+  lt: "<",
+  lte: "≤",
+  contains: "contains",
+  not_contains: "does not contain",
+  is_empty: "is empty",
+  is_not_empty: "is not empty",
+};
+
 export function NodeConfigPanel({ node, onClose, onUpdate }: NodeConfigPanelProps) {
   if (!node) return null;
 
@@ -69,39 +83,90 @@ export function NodeConfigPanel({ node, onClose, onUpdate }: NodeConfigPanelProp
           </div>
         );
 
-      case 'condition':
+      case 'condition': {
+        const cfg = node.data.config || {};
+        const operator = cfg.operator || 'eq';
+        const noValue = operator === 'is_empty' || operator === 'is_not_empty';
         return (
           <div className="space-y-4">
+            <p className="text-xs text-muted-foreground">
+              Build an <span className="font-semibold text-foreground">IF</span> rule. When it matches, the
+              flow follows the <span className="text-green-500 font-medium">green (true)</span> branch;
+              otherwise the <span className="text-red-500 font-medium">red (false)</span> branch.
+            </p>
             <div>
-              <Label htmlFor="condition-expression">Condition Expression</Label>
-              <Input
-                id="condition-expression"
-                value={node.data.config.condition || ''}
-                onChange={(e) => handleConfigChange('condition', e.target.value)}
-                placeholder="lead.status == 'new'"
-              />
-              <p className="text-xs text-muted-foreground mt-1">
-                Use format: field == "value" or field != "value"
-              </p>
+              <Label htmlFor="condition-field">Field</Label>
+              <Select
+                value={cfg.field || 'lead.status'}
+                onValueChange={(value) => handleConfigChange('field', value)}
+              >
+                <SelectTrigger id="condition-field"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="lead.status">Lead · Status</SelectItem>
+                  <SelectItem value="lead.stage">Lead · Stage</SelectItem>
+                  <SelectItem value="lead.source">Lead · Source</SelectItem>
+                  <SelectItem value="lead.score">Lead · Score</SelectItem>
+                  <SelectItem value="lead.assigned_to">Lead · Owner</SelectItem>
+                  <SelectItem value="contact.email">Contact · Email</SelectItem>
+                  <SelectItem value="contact.company">Contact · Company</SelectItem>
+                  <SelectItem value="interaction.priority">Interaction · Priority</SelectItem>
+                  <SelectItem value="interaction.channel">Interaction · Channel</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div>
-              <Label htmlFor="true-path">True Path Label</Label>
-              <Input
-                id="true-path"
-                value={node.data.config.true_path || 'Yes'}
-                onChange={(e) => handleConfigChange('true_path', e.target.value)}
-              />
+              <Label htmlFor="condition-operator">Operator</Label>
+              <Select value={operator} onValueChange={(value) => handleConfigChange('operator', value)}>
+                <SelectTrigger id="condition-operator"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="eq">Equals (=)</SelectItem>
+                  <SelectItem value="neq">Not equals (≠)</SelectItem>
+                  <SelectItem value="gt">Greater than (&gt;)</SelectItem>
+                  <SelectItem value="gte">Greater or equal (≥)</SelectItem>
+                  <SelectItem value="lt">Less than (&lt;)</SelectItem>
+                  <SelectItem value="lte">Less or equal (≤)</SelectItem>
+                  <SelectItem value="contains">Contains</SelectItem>
+                  <SelectItem value="not_contains">Does not contain</SelectItem>
+                  <SelectItem value="is_empty">Is empty</SelectItem>
+                  <SelectItem value="is_not_empty">Is not empty</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
-            <div>
-              <Label htmlFor="false-path">False Path Label</Label>
-              <Input
-                id="false-path"
-                value={node.data.config.false_path || 'No'}
-                onChange={(e) => handleConfigChange('false_path', e.target.value)}
-              />
+            {!noValue && (
+              <div>
+                <Label htmlFor="condition-value">Value</Label>
+                <Input
+                  id="condition-value"
+                  value={cfg.value ?? ''}
+                  onChange={(e) => handleConfigChange('value', e.target.value)}
+                  placeholder="e.g. new, qualified, 100"
+                />
+              </div>
+            )}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label htmlFor="true-path">True branch label</Label>
+                <Input
+                  id="true-path"
+                  value={cfg.true_path || 'Yes'}
+                  onChange={(e) => handleConfigChange('true_path', e.target.value)}
+                />
+              </div>
+              <div>
+                <Label htmlFor="false-path">False branch label</Label>
+                <Input
+                  id="false-path"
+                  value={cfg.false_path || 'No'}
+                  onChange={(e) => handleConfigChange('false_path', e.target.value)}
+                />
+              </div>
+            </div>
+            <div className="rounded-md border border-border bg-muted/40 px-3 py-2 text-xs font-mono text-muted-foreground">
+              IF {cfg.field || 'field'} {OP_PREVIEW[operator] ?? operator}{noValue ? '' : ` ${cfg.value || '…'}`}
             </div>
           </div>
         );
+      }
 
       case 'action':
         const actionType = node.data.actionType;
@@ -382,18 +447,18 @@ export function NodeConfigPanel({ node, onClose, onUpdate }: NodeConfigPanelProp
 
   const getNodeColor = (type: string) => {
     switch (type) {
-      case 'trigger': return 'bg-green-100 text-green-800 border-green-300';
-      case 'condition': return 'bg-yellow-100 text-yellow-800 border-yellow-300';
-      case 'action': return 'bg-blue-100 text-blue-800 border-blue-300';
-      case 'delay': return 'bg-purple-100 text-purple-800 border-purple-300';
-      case 'webhook': return 'bg-orange-100 text-orange-800 border-orange-300';
-      default: return 'bg-gray-100 text-gray-800 border-gray-300';
+      case 'trigger': return 'bg-green-500/15 text-green-600 dark:text-green-400 border-green-500/40';
+      case 'condition': return 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/40';
+      case 'action': return 'bg-blue-500/15 text-blue-600 dark:text-blue-400 border-blue-500/40';
+      case 'delay': return 'bg-purple-500/15 text-purple-600 dark:text-purple-400 border-purple-500/40';
+      case 'webhook': return 'bg-orange-500/15 text-orange-600 dark:text-orange-400 border-orange-500/40';
+      default: return 'bg-muted text-muted-foreground border-border';
     }
   };
 
   return (
-    <div className="w-80 border-l bg-gray-50">
-      <Card className="h-full rounded-none border-0 border-l">
+    <div className="w-80 border-l border-border bg-card">
+      <Card className="h-full rounded-none border-0">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
           <div className="flex items-center gap-2">
             <Settings className="h-4 w-4" />
