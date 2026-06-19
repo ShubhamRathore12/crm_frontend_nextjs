@@ -7,16 +7,17 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 
 # Install dependencies
-RUN npm ci
+RUN npm ci --verbose
 
 # Copy application code
 COPY . .
 
 # Set environment variables for build
 ENV NEXT_PUBLIC_API_BASE=https://primeosys.com/crm-backend
+ENV NEXT_TELEMETRY_DISABLED=1
 
 # Build the application
-RUN npm run build
+RUN npm run build --verbose
 
 # Production stage
 FROM node:20-alpine
@@ -26,8 +27,12 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV PORT=3005
 ENV HOSTNAME=0.0.0.0
+ENV NEXT_TELEMETRY_DISABLED=1
 
-# Copy standalone output
+# Install curl for health check
+RUN apk add --no-cache curl
+
+# Copy standalone output from builder
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
 COPY --from=builder /app/public ./public
@@ -37,7 +42,7 @@ EXPOSE 3005
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --retries=3 --start-period=40s \
-  CMD wget --no-verbose --tries=1 --spider http://localhost:3005/crm || exit 1
+  CMD curl -f http://localhost:3005/crm || exit 1
 
 # Start the standalone server
 CMD ["node", "server.js"]

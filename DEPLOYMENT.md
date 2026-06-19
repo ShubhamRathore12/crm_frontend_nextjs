@@ -1,172 +1,104 @@
-# CRM Frontend Auto-Deployment Guide
+# CRM Frontend - Deployment Guide
 
-This guide explains how to set up automatic deployment when pushing code to GitHub.
+## Quick Start (Windows)
 
-## Prerequisites
+Simply run:
+```batch
+deploy.bat
+```
 
-1. Docker and Docker Compose installed on your server
-2. GitHub repository access
-3. SSH access to your production server
-
-## Setup Instructions
-
-### Step 1: Configure GitHub Secrets
-
-Add the following secrets to your GitHub repository (Settings → Secrets and variables → Actions):
-
-- `SERVER_HOST`: Your server's IP address or domain
-- `SERVER_USER`: SSH username (e.g., `deploy`)
-- `SERVER_PORT`: SSH port (default: 22)
-- `SERVER_SSH_KEY`: Your SSH private key (without passphrase)
-
-### Step 2: Prepare Server
-
-Run these commands on your production server:
+## Quick Start (Linux/Mac)
 
 ```bash
-# Create deployment directory
-mkdir -p /home/deploy/crm-frontend
-cd /home/deploy/crm-frontend
-
-# Clone your repository
-git clone <your-repo-url> .
-
-# Create docker network (if not exists)
-docker network create primeosys-network || true
-
-# Make deployment script executable
-chmod +x .github/workflows/deployment-config.sh
+ssh -i ~/.ssh/ssh-key.key root@91.98.235.142 "cd /opt/crm-frontend && bash deploy.sh"
 ```
 
-### Step 3: Configure Environment
+## What Gets Deployed?
 
-Create `.env.production` on your server:
+✅ **Production Build**: Optimized Next.js application
+✅ **Docker Container**: Isolated, self-contained deployment
+✅ **Port 3005**: Running on dedicated port
+✅ **Auto-restart**: Container restarts automatically on failure
+✅ **Health Checks**: Automatic health monitoring
 
+## Deployment Process
+
+1. **Build Docker Image** - Compiles Next.js app and creates Docker image
+2. **Stop Old Container** - Gracefully stops previous version
+3. **Start New Container** - Launches new container with updated code
+4. **Verify Health** - Checks if application is running correctly
+
+## Server Information
+
+| Property | Value |
+|----------|-------|
+| **Host** | 91.98.235.142 |
+| **User** | root |
+| **Port** | 3005 |
+| **Container** | crm-frontend |
+| **Network** | primeosys-network |
+| **URL** | https://primeosys.com/crm |
+
+## Files Included
+
+- `Dockerfile` - Container build definition
+- `docker-compose.yml` - Docker Compose configuration
+- `deploy.sh` - Deployment script (runs on server)
+- `deploy.bat` - Windows deployment launcher
+- `.dockerignore` - Files to exclude from Docker image
+
+## Troubleshooting
+
+### Check Container Status
 ```bash
-NODE_ENV=production
-NEXT_PUBLIC_API_URL=/backend
-PORT=3005
+docker ps | grep crm-frontend
 ```
 
-### Step 4: Test Deployment
-
-Push to your main branch:
-
-```bash
-git push origin main
-```
-
-The GitHub Actions workflow will:
-1. Build your Next.js application
-2. Create a Docker image
-3. Push image to GitHub Container Registry
-4. Deploy to your server via SSH
-5. Start the container with health checks
-
-## Deployment Flow
-
-```
-Push to GitHub
-     ↓
-GitHub Actions triggered
-     ↓
-Build Next.js app
-     ↓
-Build Docker image
-     ↓
-Push to registry
-     ↓
-SSH into server
-     ↓
-Pull latest code
-     ↓
-Build & start container
-     ↓
-Health check
-     ↓
-Test endpoint
-     ↓
-Deployment complete ✓
-```
-
-## Nginx Configuration
-
-The app is available at `https://primeosys.com/crm/`
-
-**Important:** The server name (`primeosys.com`) is NOT included in the path after `/crm`. The application handles routing internally.
-
-### Key Nginx Rules:
-- `/crm/` → Proxies to `http://127.0.0.1:3005/`
-- `/crm/_next/static` → Cached for 1 year
-- `/crm/api/` → API routes proxied to backend
-
-## Monitoring Deployment
-
-### Check logs:
+### View Logs
 ```bash
 docker logs crm-frontend -f
 ```
 
-### Check container status:
+### Restart Container
 ```bash
-docker ps -f "name=crm-frontend"
+docker restart crm-frontend
 ```
 
-### Test health:
+### Stop Container
 ```bash
-curl http://localhost:3005/crm
+docker stop crm-frontend
 ```
 
-## Rollback Procedure
-
-If deployment fails, it automatically rolls back to the previous container version.
-
-To manually rollback:
-
+### Remove Container
 ```bash
-cd /home/deploy/crm-frontend-backup
-docker-compose -f docker-compose.yml up -d
+docker rm crm-frontend
+```
+
+### Rebuild Image
+```bash
+docker build -t crm-frontend:latest /opt/crm-frontend
 ```
 
 ## Environment Variables
 
-| Variable | Value | Purpose |
-|----------|-------|---------|
-| NODE_ENV | production | Run in production mode |
-| NEXT_PUBLIC_API_URL | /backend | API base URL |
-| PORT | 3005 | Container port |
+| Variable | Value |
+|----------|-------|
+| NODE_ENV | production |
+| PORT | 3005 |
+| NEXT_PUBLIC_API_BASE | https://primeosys.com/crm-backend |
 
-## Troubleshooting
+## Performance
 
-### Deployment fails to connect
-- Check `SERVER_HOST`, `SERVER_USER`, `SERVER_SSH_KEY` secrets
-- Ensure SSH key has no passphrase
-- Verify server's SSH port is correct
+- **Memory Limit**: 512MB
+- **CPU Limit**: 1 CPU
+- **Health Check Interval**: 30 seconds
+- **Build Time**: ~2-3 minutes
+- **Startup Time**: ~10 seconds
 
-### Container not starting
-- Check Docker and Docker Compose are installed: `docker --version`
-- Check network exists: `docker network ls | grep primeosys`
-- Review logs: `docker logs crm-frontend`
+## Notes
 
-### Health check failing
-- Ensure app starts on port 3005
-- Check `NEXT_PUBLIC_API_URL` is set correctly
-- Review application logs for errors
-
-## Zero-Downtime Deployment
-
-The deployment script ensures zero downtime by:
-1. Stopping old container gracefully
-2. Building new container
-3. Waiting for health checks to pass
-4. Testing endpoint
-5. Automatic rollback on failure
-
-## Next Steps
-
-1. Add GitHub secrets to your repository
-2. Prepare your server following "Configure Server" section
-3. Push code to trigger deployment
-4. Monitor logs during first deployment
-
-For issues, check the GitHub Actions workflow logs in your repository.
+- All deployment markdown files have been removed to keep things simple
+- Single deployment script handles everything
+- Docker handles container lifecycle automatically
+- Application is served over HTTPS with nginx proxy
+- All logs can be viewed with `docker logs crm-frontend`
