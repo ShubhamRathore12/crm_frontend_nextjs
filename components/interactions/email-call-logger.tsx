@@ -62,10 +62,9 @@ export function EmailCallLogger({
       await api.interactions.create({
         contact_id: contactId,
         channel: type === "email" ? "email" : "phone",
-        status: form.status,
         subject: form.subject || `${type} logged`,
-        description: form.body,
-        notes: form.duration ? `Duration: ${form.duration} min` : undefined,
+        initial_message: form.body,
+        priority: form.status === "completed" ? "low" : "medium",
       });
       toast.success(`${type} logged`);
       setForm({ subject: "", body: "", duration: "", status: "completed" });

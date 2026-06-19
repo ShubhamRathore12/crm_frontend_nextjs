@@ -38,7 +38,7 @@ export function UnifiedTimeline({ contactId }: { contactId: string }) {
       const [interactions, tasks, emails] = await Promise.all([
         api.contacts.interactions(contactId).catch(() => []),
         api.tasks
-          .list({ params: {} })
+          .list({})
           .then((r) => (r as any).data || [])
           .catch(() => []),
         api.contacts.emailHistory(contactId).catch(() => []),
@@ -58,7 +58,7 @@ export function UnifiedTimeline({ contactId }: { contactId: string }) {
           id: i.id,
           type: "interaction",
           title: i.subject || `${i.channel} interaction`,
-          description: i.description,
+          description: i.subject || `${i.channel} interaction`,
           timestamp: i.created_at,
           status: i.status,
           channel: i.channel,
@@ -86,21 +86,21 @@ export function UnifiedTimeline({ contactId }: { contactId: string }) {
 
       // Tasks
       (tasks || [])
-        .filter((t: Task) => t.contact_id === contactId)
+        .filter((t: Task) => t.entity_type === "contact" && t.entity_id === contactId)
         .forEach((t: Task) => {
           timelineItems.push({
             id: t.id,
             type: "task",
-            title: t.subject,
-            description: t.notes,
+            title: t.title,
+            description: t.description || "",
             timestamp: t.due_date || t.created_at,
             status: t.status,
             icon: (
               <CheckCircle2
-                className={`h-4 w-4 ${t.completed ? "fill-current" : ""}`}
+                className={`h-4 w-4 ${t.status === "completed" ? "fill-current" : ""}`}
               />
             ),
-            color: t.completed
+            color: t.status === "completed"
               ? "bg-green-500/10 text-green-600"
               : "bg-amber-500/10 text-amber-600",
           });

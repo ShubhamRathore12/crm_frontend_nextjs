@@ -67,6 +67,28 @@ class PerformanceMonitor {
       this.metrics.clear();
     }
   }
+
+  trackApiRequest(path: string, duration: number, status: number, method: string) {
+    const name = `api:${method}:${path}`;
+    const metric: PerformanceMetric = {
+      name,
+      startTime: performance.now() - duration,
+      endTime: performance.now(),
+      duration,
+      tags: { path, status: status.toString(), method }
+    };
+
+    if (!this.metrics.has(name)) {
+      this.metrics.set(name, []);
+    }
+    this.metrics.get(name)!.push(metric);
+
+    if (process.env.NODE_ENV === 'development') {
+      console.debug(
+        `🌐 ${method} ${path}: ${duration.toFixed(2)}ms (${status})`
+      );
+    }
+  }
 }
 
 export const performanceMonitor = new PerformanceMonitor();

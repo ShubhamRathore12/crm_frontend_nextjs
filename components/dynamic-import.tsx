@@ -22,10 +22,14 @@ export function CardSkeleton() {
   );
 }
 
-export function TableSkeleton() {
+interface TableSkeletonProps {
+  rows?: number;
+}
+
+export function TableSkeleton({ rows = 5 }: TableSkeletonProps) {
   return (
     <div className="space-y-3">
-      {Array.from({ length: 5 }).map((_, i) => (
+      {Array.from({ length: rows }).map((_, i) => (
         <div key={i} className="flex items-center gap-4">
           <div className="h-4 w-4 rounded bg-muted animate-pulse" />
           <div className="h-4 flex-1 rounded bg-muted animate-pulse" />
@@ -36,7 +40,7 @@ export function TableSkeleton() {
   );
 }
 
-export const DynamicDataTable = dynamic(
-  () => import("@tanstack/react-table").then((mod) => mod),
-  { ssr: false }
-);
+// export const DynamicDataTable = dynamic(
+//   () => import("@tanstack/react-table").then((mod) => mod),
+//   { ssr: false }
+// );

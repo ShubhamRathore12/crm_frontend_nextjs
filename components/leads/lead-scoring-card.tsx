@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { api } from "@/lib/api";
+import { api, type LeadScore as ApiLeadScore } from "@/lib/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Flame, TrendingUp, Zap } from "lucide-react";
 
@@ -19,7 +19,18 @@ export function LeadScoringCard({ leadId }: { leadId: string }) {
 
   useEffect(() => {
     api.leads.score(leadId)
-      .then(setScore)
+      .then((apiScore: ApiLeadScore) => {
+        // Transform API response to match component's expected shape
+        const transformedScore: LeadScore = {
+          total_score: apiScore.score,
+          engagement_score: apiScore.factors?.engagement || 0,
+          profile_score: apiScore.factors?.profile || 0,
+          activity_score: apiScore.factors?.activity || 0,
+          recommendation: apiScore.score >= 80 ? "High Priority" : 
+                         apiScore.score >= 60 ? "Medium Priority" : "Needs Attention"
+        };
+        setScore(transformedScore);
+      })
       .catch(console.error)
       .finally(() => setLoading(false));
   }, [leadId]);

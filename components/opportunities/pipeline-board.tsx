@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { api } from "@/lib/api";
+import { api, type PipelineStage as ApiPipelineStage } from "@/lib/api";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ArrowRight, DollarSign, TrendingUp } from "lucide-react";
@@ -20,7 +20,16 @@ export function PipelineBoard() {
 
   useEffect(() => {
     api.opportunities.pipeline()
-      .then(setStages)
+      .then((apiStages: ApiPipelineStage[]) => {
+        // Transform API response to match component's expected shape
+        const transformedStages: PipelineStage[] = apiStages.map(apiStage => ({
+          stage: apiStage.stage,
+          count: apiStage.count,
+          value: apiStage.totalValue,
+          expected_close: undefined // API doesn't provide this
+        }));
+        setStages(transformedStages);
+      })
       .catch(console.error)
       .finally(() => setLoading(false));
   }, []);
