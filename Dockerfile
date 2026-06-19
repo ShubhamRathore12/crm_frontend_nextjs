@@ -42,7 +42,7 @@ EXPOSE 3005
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --retries=3 --start-period=40s \
-  CMD curl -f http://localhost:3005/crm || exit 1
+  CMD curl -f http://localhost:3005/ || exit 1
 
 # Start the standalone server
 CMD ["node", "server.js"]
