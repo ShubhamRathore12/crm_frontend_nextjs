@@ -45,7 +45,7 @@ echo ""
 # Step 4: Build Docker image
 echo "Step 4: Building Docker image..."
 echo "   This may take a few minutes..."
-docker build -t $IMAGE_NAME . --progress=plain
+docker build -t $IMAGE_NAME .
 if [ $? -ne 0 ]; then
     echo "❌ Error: Docker build failed"
     exit 1
