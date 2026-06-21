@@ -55,7 +55,9 @@ const columns: DataTableColumn<Contact>[] = [
     header: "Contact Name",
     width: 200,
     searchable: true,
+    sortable: true,
     filterValue: (c) => c.name ?? "",
+    exportValue: (c) => c.name ?? "",
     render: (contact) => (
       <Link
         href={`/contacts/${contact.id}`}
@@ -102,6 +104,9 @@ const columns: DataTableColumn<Contact>[] = [
     key: "contactScore",
     header: "Contact Score",
     width: 120,
+    sortable: true,
+    sortValue: (c) => c.contactScore ?? 0,
+    exportValue: (c) => String(c.contactScore ?? ""),
     render: (contact) => (
       <span className="font-semibold text-gray-900">
         {contact.contactScore ?? "—"}
@@ -113,7 +118,9 @@ const columns: DataTableColumn<Contact>[] = [
     header: "Contact Stage",
     width: 130,
     searchable: true,
+    sortable: true,
     filterValue: (c) => c.stage ?? "",
+    exportValue: (c) => c.stage ?? "",
     render: (contact) => (
       <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200">
         {contact.stage ?? "—"}
@@ -125,7 +132,9 @@ const columns: DataTableColumn<Contact>[] = [
     header: "Contact Owner",
     width: 130,
     searchable: true,
+    sortable: true,
     filterValue: (c) => c.owner ?? "",
+    exportValue: (c) => c.owner ?? "",
     render: (contact) => <span className="text-gray-700">{contact.owner ?? "—"}</span>,
   },
   {

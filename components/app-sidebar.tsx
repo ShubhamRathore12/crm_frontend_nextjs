@@ -31,7 +31,7 @@ const nav = [
   { href: "/calendar", label: "Calendar", icon: CalendarIcon },
   { href: "/leads", label: "Leads", icon: UserPlus },
   { href: "/opportunities", label: "Opportunities", icon: Target },
-  { href: "/contacts", label: "Contacts", icon: Users },
+
   { href: "/interactions", label: "Interactions", icon: MessageSquare },
   { href: "/workflows", label: "Workflows", icon: GitBranch },
   { href: "/campaigns", label: "Campaigns", icon: Megaphone },

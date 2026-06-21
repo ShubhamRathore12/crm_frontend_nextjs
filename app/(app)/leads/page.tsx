@@ -52,6 +52,9 @@ import {
   Flame,
   Activity,
   ArrowUpRight,
+  ArrowUp,
+  ArrowDown,
+  ChevronsUpDown,
   SlidersHorizontal,
   Star,
   MoreVertical,
@@ -137,6 +140,12 @@ export default function LeadsPage() {
     owner: true,
     created: true,
   });
+  const [sort, setSort] = useState<{ key: string; dir: "asc" | "desc" } | null>(null);
+
+  const toggleSort = (key: string) =>
+    setSort((prev) =>
+      prev?.key !== key ? { key, dir: "asc" } : prev.dir === "asc" ? { key, dir: "desc" } : null
+    );
 
   // Hydrate logged-in user and starred leads on mount
   useEffect(() => {
@@ -600,6 +609,42 @@ export default function LeadsPage() {
     return true;
   });
 
+  // Client-side sorting
+  const leadSortValue = (lead: Lead, key: string): string | number => {
+    switch (key) {
+      case "name": return lead.contacts?.name ?? "";
+      case "score": return lead.lead_scores?.score ?? 45;
+      case "stage": return lead.stage ?? "";
+      case "status": return lead.status ?? "";
+      case "source": return lead.source ?? "";
+      case "owner": return lead.assigned_to ?? "";
+      case "created": return lead.created_at ?? "";
+      default: return "";
+    }
+  };
+  if (sort) {
+    const dir = sort.dir === "asc" ? 1 : -1;
+    displayedLeads.sort((a, b) => {
+      const va = leadSortValue(a, sort.key), vb = leadSortValue(b, sort.key);
+      if (typeof va === "number" && typeof vb === "number") return (va - vb) * dir;
+      return String(va).localeCompare(String(vb), undefined, { numeric: true }) * dir;
+    });
+  }
+
+  const sortHeader = (key: string, label: string) => (
+    <button
+      onClick={() => toggleSort(key)}
+      className="inline-flex items-center gap-1 hover:text-foreground transition-colors"
+    >
+      {label}
+      {sort?.key === key ? (
+        sort.dir === "asc" ? <ArrowUp className="h-3 w-3 text-primary" /> : <ArrowDown className="h-3 w-3 text-primary" />
+      ) : (
+        <ChevronsUpDown className="h-3 w-3 opacity-40" />
+      )}
+    </button>
+  );
+
   // Color helpers for dropdown inline selector badges
   const getStageBadgeStyles = (stage: string) => {
     switch (stage?.toLowerCase()) {
@@ -939,10 +984,10 @@ export default function LeadsPage() {
 
       {/* MAIN LEADS TABLE CARD */}
       <Card className="shadow-lg border-border bg-card/45 backdrop-blur-md overflow-hidden rounded-xl">
-        <div className="overflow-x-auto">
+        <div className="overflow-auto max-h-[calc(100vh-260px)]">
           <table className="w-full text-sm border-collapse text-left">
-            <thead>
-              <tr className="border-b bg-muted/40 text-xs font-bold text-muted-foreground uppercase tracking-wider">
+            <thead className="sticky top-0 z-20">
+              <tr className="border-b bg-muted text-xs font-bold text-muted-foreground uppercase tracking-wider [&_th]:bg-muted">
                 <th className="p-4 w-16 text-center">
                   <div className="flex items-center justify-center gap-1.5">
                     <input
@@ -953,13 +998,13 @@ export default function LeadsPage() {
                     />
                   </div>
                 </th>
-                <th className="p-4 min-w-[200px] font-bold">Lead Name / Contact Info</th>
-                {visibleColumns.score && <th className="p-4 w-[110px] text-center font-bold">Score</th>}
-                {visibleColumns.stage && <th className="p-4 min-w-[140px] font-bold">Stage</th>}
-                {visibleColumns.status && <th className="p-4 min-w-[130px] font-bold">Status</th>}
-                {visibleColumns.source && <th className="p-4 min-w-[120px] font-bold">Source</th>}
-                {visibleColumns.owner && <th className="p-4 min-w-[160px] font-bold">Owner</th>}
-                {visibleColumns.created && <th className="p-4 w-[120px] font-bold">Created</th>}
+                <th className="p-4 min-w-[200px] font-bold">{sortHeader("name", "Lead Name / Contact Info")}</th>
+                {visibleColumns.score && <th className="p-4 w-[110px] text-center font-bold">{sortHeader("score", "Score")}</th>}
+                {visibleColumns.stage && <th className="p-4 min-w-[140px] font-bold">{sortHeader("stage", "Stage")}</th>}
+                {visibleColumns.status && <th className="p-4 min-w-[130px] font-bold">{sortHeader("status", "Status")}</th>}
+                {visibleColumns.source && <th className="p-4 min-w-[120px] font-bold">{sortHeader("source", "Source")}</th>}
+                {visibleColumns.owner && <th className="p-4 min-w-[160px] font-bold">{sortHeader("owner", "Owner")}</th>}
+                {visibleColumns.created && <th className="p-4 w-[120px] font-bold">{sortHeader("created", "Created")}</th>}
                 <th className="p-4 w-[160px] text-right font-bold">
                   <div className="flex items-center justify-end gap-1.5">
                     <span>Actions</span>

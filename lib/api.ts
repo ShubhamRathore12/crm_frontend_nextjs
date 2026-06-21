@@ -147,6 +147,31 @@ export const api = {
       request<unknown>(`/interactions/${id}/analyze`, { method: "POST" }),
   },
 
+  // ── Ticket Workspace (rich omni-channel tickets for the 3-pane UI) ──
+  ticketWorkspace: {
+    list: (params?: { channel?: string; status?: string; priority?: string; search?: string }) =>
+      request<{ data: import("@/lib/mock/interactions").Ticket[] }>(
+        "/ticket-workspace",
+        params ? { params: params as Record<string, string> } : undefined
+      ),
+    get: (id: string) =>
+      request<{ data: import("@/lib/mock/interactions").Ticket }>(`/ticket-workspace/${id}`),
+    update: (id: string, patch: Partial<import("@/lib/mock/interactions").Ticket>) =>
+      request<{ data: import("@/lib/mock/interactions").Ticket }>(`/ticket-workspace/${id}`, {
+        method: "PUT",
+        body: JSON.stringify(patch),
+      }),
+    create: (payload: {
+      customerName: string; subject: string; channel: string;
+      email?: string; phone?: string; location?: string;
+      classification?: string; priority?: string; message?: string;
+    }) =>
+      request<{ data: import("@/lib/mock/interactions").Ticket }>("/ticket-workspace", {
+        method: "POST",
+        body: JSON.stringify(payload),
+      }),
+  },
+
   // ── Opportunities ──
   opportunities: {
     list: (params?: { page?: string; limit?: string; stage?: string; assigned_to?: string; search?: string; min_value?: string; max_value?: string; min_probability?: string; max_probability?: string; created_after?: string; created_before?: string; expected_close_after?: string; expected_close_before?: string }) =>

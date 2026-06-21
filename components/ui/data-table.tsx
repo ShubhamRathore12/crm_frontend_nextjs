@@ -15,6 +15,12 @@ import {
   PinOff,
   ArrowLeftToLine,
   ArrowRightToLine,
+  ArrowUp,
+  ArrowDown,
+  ChevronsUpDown,
+  Columns3,
+  Download,
+  Check,
 } from "lucide-react";
 import {
   Dialog,
@@ -48,6 +54,14 @@ export interface DataTableColumn<T> {
   /** Extract plain-text value from the row for column filtering.
    *  Required when `searchable` is true. */
   filterValue?: (row: T) => string;
+  /** Enable click-to-sort on this column header */
+  sortable?: boolean;
+  /** Comparison key for sorting (falls back to filterValue) */
+  sortValue?: (row: T) => string | number;
+  /** Plain-text value for CSV export (falls back to filterValue) */
+  exportValue?: (row: T) => string;
+  /** Hide this column by default (user can re-enable via Columns menu) */
+  defaultHidden?: boolean;
   className?: string;
   render: (row: T) => React.ReactNode;
 }
@@ -115,9 +129,33 @@ export function DataTable<T extends { id: string }>({
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
   const [columnFilters, setColumnFilters] = useState<Record<string, string>>({});
   const [columnPins, setColumnPins] = useState<Record<string, PinDirection>>({});
+  const [sort, setSort] = useState<{ key: string; dir: "asc" | "desc" } | null>(null);
+  const [hiddenCols, setHiddenCols] = useState<Set<string>>(
+    () => new Set(columns.filter((c) => c.defaultHidden).map((c) => c.key))
+  );
   const sentinelRef = useRef<HTMLDivElement>(null);
 
   const hasDeleteAction = showActions && !!onDelete;
+
+  // ---- Column visibility -------------------------------------------------
+  const visibleColumns = useMemo(
+    () => columns.filter((c) => !hiddenCols.has(c.key)),
+    [columns, hiddenCols]
+  );
+  const toggleColVisible = (key: string) =>
+    setHiddenCols((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key); else next.add(key);
+      return next;
+    });
+
+  // ---- Sorting -----------------------------------------------------------
+  const toggleSort = (key: string) =>
+    setSort((prev) => {
+      if (prev?.key !== key) return { key, dir: "asc" };
+      if (prev.dir === "asc") return { key, dir: "desc" };
+      return null; // third click clears
+    });
 
   // ---- User-controlled column pinning ------------------------------------
   const pinColumn = (key: string, dir: PinDirection) =>
@@ -134,23 +172,23 @@ export function DataTable<T extends { id: string }>({
 
   // ---- Column ordering: left-pinned → unpinned → right-pinned -----------
   const leftPinned = useMemo(
-    () => columns.filter((c) => columnPins[c.key] === "left"),
-    [columns, columnPins]
+    () => visibleColumns.filter((c) => columnPins[c.key] === "left"),
+    [visibleColumns, columnPins]
   );
   const rightPinned = useMemo(
-    () => columns.filter((c) => columnPins[c.key] === "right"),
-    [columns, columnPins]
+    () => visibleColumns.filter((c) => columnPins[c.key] === "right"),
+    [visibleColumns, columnPins]
   );
   const unpinnedCols = useMemo(
-    () => columns.filter((c) => !columnPins[c.key]),
-    [columns, columnPins]
+    () => visibleColumns.filter((c) => !columnPins[c.key]),
+    [visibleColumns, columnPins]
   );
   const orderedColumns = useMemo(
     () => [...leftPinned, ...unpinnedCols, ...rightPinned],
     [leftPinned, unpinnedCols, rightPinned]
   );
 
-  const hasSearchableColumns = columns.some((c) => c.searchable);
+  const hasSearchableColumns = visibleColumns.some((c) => c.searchable);
 
   // ---- Sticky offset maps ------------------------------------------------
   const leftOffsets = useMemo(() => {
@@ -224,16 +262,52 @@ export function DataTable<T extends { id: string }>({
     );
   }, [data, columnFilters, columns]);
 
+  // ---- Sorting (client-side) ---------------------------------------------
+  const sortedData = useMemo(() => {
+    if (!sort) return filteredData;
+    const col = columns.find((c) => c.key === sort.key);
+    if (!col) return filteredData;
+    const getVal = (row: T): string | number =>
+      col.sortValue ? col.sortValue(row) : col.filterValue ? col.filterValue(row) : "";
+    const dir = sort.dir === "asc" ? 1 : -1;
+    return [...filteredData].sort((a, b) => {
+      const va = getVal(a), vb = getVal(b);
+      if (typeof va === "number" && typeof vb === "number") return (va - vb) * dir;
+      return String(va).localeCompare(String(vb), undefined, { numeric: true }) * dir;
+    });
+  }, [filteredData, sort, columns]);
+
   // ---- Row pinning -------------------------------------------------------
   const pinnedIdSet = useMemo(() => new Set(pinnedRowIds ?? []), [pinnedRowIds]);
   const pinnedRows = useMemo(
-    () => (pinnedIdSet.size ? filteredData.filter((r) => pinnedIdSet.has(r.id)) : []),
-    [filteredData, pinnedIdSet]
+    () => (pinnedIdSet.size ? sortedData.filter((r) => pinnedIdSet.has(r.id)) : []),
+    [sortedData, pinnedIdSet]
   );
   const unpinnedRows = useMemo(
-    () => (pinnedIdSet.size ? filteredData.filter((r) => !pinnedIdSet.has(r.id)) : filteredData),
-    [filteredData, pinnedIdSet]
+    () => (pinnedIdSet.size ? sortedData.filter((r) => !pinnedIdSet.has(r.id)) : sortedData),
+    [sortedData, pinnedIdSet]
   );
+
+  // ---- CSV export --------------------------------------------------------
+  const exportCsv = () => {
+    const cols = orderedColumns;
+    const esc = (v: string) => `"${String(v).replace(/"/g, '""')}"`;
+    const head = cols.map((c) => esc(c.header)).join(",");
+    const body = sortedData
+      .map((r) =>
+        cols
+          .map((c) => esc(c.exportValue ? c.exportValue(r) : c.filterValue ? c.filterValue(r) : ""))
+          .join(",")
+      )
+      .join("\n");
+    const blob = new Blob([head + "\n" + body], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${entityLabel || "export"}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
   const headerTopOffset = ROW_HEIGHT + (hasSearchableColumns ? ROW_HEIGHT : 0);
 
@@ -337,7 +411,22 @@ export function DataTable<T extends { id: string }>({
         style={pinnedStyle(col)}
       >
         <div className="flex items-center gap-1.5">
-          <span>{col.header}</span>
+          {col.sortable ? (
+            <button
+              onClick={() => toggleSort(col.key)}
+              className="inline-flex items-center gap-1 hover:text-foreground transition-colors"
+              title="Sort"
+            >
+              <span>{col.header}</span>
+              {sort?.key === col.key ? (
+                sort.dir === "asc" ? <ArrowUp className="h-3.5 w-3.5 text-primary" /> : <ArrowDown className="h-3.5 w-3.5 text-primary" />
+              ) : (
+                <ChevronsUpDown className="h-3.5 w-3.5 text-muted-foreground/40" />
+              )}
+            </button>
+          ) : (
+            <span>{col.header}</span>
+          )}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button
@@ -385,27 +474,52 @@ export function DataTable<T extends { id: string }>({
   return (
     <>
       {/* ---- Global search + filters bar ---- */}
-      {(onSearchChange || filters || total !== undefined) && (
-        <div className="flex gap-2 md:gap-3 items-center flex-wrap">
-          {onSearchChange && (
-            <div className="relative flex-1 min-w-[180px] max-w-sm">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder={searchPlaceholder}
-                value={searchValue ?? ""}
-                onChange={(e) => onSearchChange(e.target.value)}
-                className="pl-9"
-              />
-            </div>
-          )}
-          {filters}
-          {total !== undefined && entityLabel && (
-            <span className="text-xs md:text-sm text-muted-foreground">
-              {total} {entityLabel}
-            </span>
-          )}
-        </div>
-      )}
+      <div className="flex gap-2 md:gap-3 items-center flex-wrap">
+        {onSearchChange && (
+          <div className="relative flex-1 min-w-[180px] max-w-sm">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder={searchPlaceholder}
+              value={searchValue ?? ""}
+              onChange={(e) => onSearchChange(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+        )}
+        {filters}
+
+        {/* Column visibility */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="sm" className="gap-1.5">
+              <Columns3 className="h-4 w-4" /> Columns
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-48">
+            {columns.map((c) => (
+              <DropdownMenuItem
+                key={c.key}
+                onSelect={(e) => { e.preventDefault(); toggleColVisible(c.key); }}
+                className="justify-between"
+              >
+                <span className="truncate">{c.header}</span>
+                {!hiddenCols.has(c.key) && <Check className="h-4 w-4 text-primary" />}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+
+        {/* Export */}
+        <Button variant="outline" size="sm" className="gap-1.5" onClick={exportCsv} disabled={data.length === 0}>
+          <Download className="h-4 w-4" /> Export
+        </Button>
+
+        {total !== undefined && entityLabel && (
+          <span className="ml-auto text-xs md:text-sm text-muted-foreground">
+            {total} {entityLabel}
+          </span>
+        )}
+      </div>
 
       {/* ---- Table ---- */}
       <Card>
