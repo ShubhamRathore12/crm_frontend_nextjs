@@ -16,6 +16,7 @@ import {
   Target,
   Inbox as InboxIcon,
   Calendar as CalendarIcon,
+  List as ListIcon,
   LogOut,
   Menu,
   X,
@@ -31,6 +32,7 @@ const nav = [
   { href: "/calendar", label: "Calendar", icon: CalendarIcon },
   { href: "/leads", label: "Leads", icon: UserPlus },
   { href: "/opportunities", label: "Opportunities", icon: Target },
+  { href: "/lists", label: "Lists", icon: ListIcon },
 
   { href: "/interactions", label: "Interactions", icon: MessageSquare },
   { href: "/workflows", label: "Workflows", icon: GitBranch },

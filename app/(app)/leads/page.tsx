@@ -685,8 +685,8 @@ export default function LeadsPage() {
   };
 
   return (
-    <div className="p-4 md:p-6 space-y-6 max-w-7xl mx-auto pb-24 animate-in fade-in-50 duration-300">
-      
+    <div className="flex flex-col h-[calc(100vh-3.5rem)] md:h-screen p-4 md:p-6 gap-6 max-w-7xl mx-auto w-full overflow-hidden animate-in fade-in-50 duration-300">
+
       {/* HEADER SECTION */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
@@ -983,8 +983,8 @@ export default function LeadsPage() {
       </Card>
 
       {/* MAIN LEADS TABLE CARD */}
-      <Card className="shadow-lg border-border bg-card/45 backdrop-blur-md overflow-hidden rounded-xl">
-        <div className="overflow-auto max-h-[calc(100vh-260px)]">
+      <Card className="flex-1 min-h-0 flex flex-col shadow-lg border-border bg-card/45 backdrop-blur-md overflow-hidden rounded-xl">
+        <div className="flex-1 min-h-0 overflow-auto">
           <table className="w-full text-sm border-collapse text-left">
             <thead className="sticky top-0 z-20">
               <tr className="border-b bg-muted text-xs font-bold text-muted-foreground uppercase tracking-wider [&_th]:bg-muted">
@@ -1326,7 +1326,7 @@ export default function LeadsPage() {
 
         {/* PAGINATION PANEL */}
         {totalPages > 1 && (
-          <div className="p-4 border-t flex items-center justify-between bg-muted/10">
+          <div className="shrink-0 p-4 border-t flex items-center justify-between bg-muted/10">
             <span className="text-xs text-muted-foreground">
               Showing page {page} of {totalPages} ({activeTab !== "all" ? displayedLeads.length : totalLeads} leads)
             </span>
