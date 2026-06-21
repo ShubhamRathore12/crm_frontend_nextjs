@@ -24,6 +24,13 @@ cd $DEPLOY_PATH
 echo "✅ Directory: $(pwd)"
 echo ""
 
+# Step 1.5: Pull latest code
+echo "Step 1.5: Pulling latest code..."
+git fetch origin
+git reset --hard origin/main
+echo "✅ Code updated to latest origin/main"
+echo ""
+
 # Step 2: Check if Dockerfile exists
 echo "Step 2: Checking Dockerfile..."
 if [ ! -f "Dockerfile" ]; then
