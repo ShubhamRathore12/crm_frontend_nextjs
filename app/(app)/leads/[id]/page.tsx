@@ -801,7 +801,21 @@ export default function LeadDetailPage() {
                   ].map((p) => (
                     <div key={p.label}>
                       <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{p.label}</div>
-                      <div className="text-sm font-medium capitalize mt-0.5">{p.value}</div>
+                      {p.label === "Product Interest" && lead.product ? (
+                        <button
+                          onClick={() =>
+                            router.push(
+                              `/opportunities?lead=${encodeURIComponent(lead.id)}&name=${encodeURIComponent(lead.contacts?.name || "")}&product=${encodeURIComponent(lead.product)}`
+                            )
+                          }
+                          className="text-sm font-medium capitalize mt-0.5 text-primary hover:underline text-left"
+                          title="Open this product's opportunity"
+                        >
+                          {p.value}
+                        </button>
+                      ) : (
+                        <div className="text-sm font-medium capitalize mt-0.5">{p.value}</div>
+                      )}
                     </div>
                   ))}
                 </div>

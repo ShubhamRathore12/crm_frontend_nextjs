@@ -187,6 +187,26 @@ export const api = {
     stats: () => request<OpportunityStats>("/opportunities/stats"),
     bulkUpdateStage: (body: { ids: string[]; stage: string; probability?: number }) =>
       request<{ updated: number; stage: string }>("/opportunities/bulk-update-stage", { method: "POST", body: JSON.stringify(body) }),
+    productHistory: (id: string) =>
+      request<{ data: OpportunityProductHistory[] }>(`/opportunities/${id}/product-history`).then((res) => (res as any).data ?? res),
+
+    // LeadSquared-style opportunities (backend-backed, same UI shape).
+    reference: () =>
+      request<{ data: OppReferenceData }>("/opportunities/reference").then((r) => r.data),
+    ui: {
+      list: (params?: { lead_id?: string; product?: string; owner?: string; status?: string; type?: string; search?: string }) =>
+        request<{ data: UiOpp[] }>("/opportunities/ui", params ? { params: params as Record<string, string> } : undefined).then((r) => r.data),
+      get: (id: string) =>
+        request<{ data: UiOpp }>(`/opportunities/ui/${id}`).then((r) => r.data),
+      create: (body: UiOpp) =>
+        request<{ data: UiOpp }>("/opportunities/ui", { method: "POST", body: JSON.stringify(body) }).then((r) => r.data),
+      update: (id: string, patch: Partial<UiOpp>) =>
+        request<{ data: UiOpp }>(`/opportunities/ui/${id}`, { method: "PUT", body: JSON.stringify(patch) }).then((r) => r.data),
+      delete: (id: string) =>
+        request<{ ok: boolean }>(`/opportunities/ui/${id}`, { method: "DELETE" }),
+      ensureForLead: (body: { lead_id: string; name?: string; email?: string; phone?: string; product?: string; owner?: string }) =>
+        request<{ data: UiOpp; created: boolean }>("/opportunities/ui/ensure-for-lead", { method: "POST", body: JSON.stringify(body) }),
+    },
   },
 
   // ── Tasks ──
@@ -427,6 +447,30 @@ export const api = {
       remove: (id: string, userId: string) =>
         request<unknown>(`/users/teams/${id}/members/${userId}`, { method: "DELETE" }),
     },
+  },
+
+  // ── Access Control (RBAC: groups, permissions) ──
+  accessControl: {
+    modules: () =>
+      request<{ data: { modules: AccessModule[]; actions: PermAction[] } }>("/access-control/modules").then((r) => r.data),
+    me: () =>
+      request<{ data: MyPermissions }>("/access-control/me").then((r) => r.data),
+    groups: () =>
+      request<{ data: AccessGroup[] }>("/access-control/groups").then((r) => r.data),
+    createGroup: (body: { name: string; description?: string }) =>
+      request<{ data: AccessGroup }>("/access-control/groups", { method: "POST", body: JSON.stringify(body) }).then((r) => r.data),
+    updateGroup: (id: string, body: { name?: string; description?: string }) =>
+      request<{ data: AccessGroup }>(`/access-control/groups/${id}`, { method: "PUT", body: JSON.stringify(body) }).then((r) => r.data),
+    deleteGroup: (id: string) =>
+      request<{ ok: boolean }>(`/access-control/groups/${id}`, { method: "DELETE" }),
+    setGroupPermissions: (id: string, permissions: GroupPermissionRow[]) =>
+      request<{ data: { group_id: string; updated: number } }>(`/access-control/groups/${id}/permissions`, { method: "PUT", body: JSON.stringify({ permissions }) }),
+    userPermissions: (userId: string) =>
+      request<{ data: UserPermissionProfile }>(`/access-control/users/${userId}/permissions`).then((r) => r.data),
+    setUserPermissions: (userId: string, overrides: UserPermissionOverride[]) =>
+      request<{ data: { user_id: string; updated: number; cleared: number } }>(`/access-control/users/${userId}/permissions`, { method: "PUT", body: JSON.stringify({ overrides }) }),
+    setUserGroup: (userId: string, groupId: string | null) =>
+      request<{ data: { id: string; group_id: string | null } }>(`/access-control/users/${userId}/group`, { method: "PUT", body: JSON.stringify({ group_id: groupId }) }),
   },
 
   // ── Analytics ──
@@ -801,6 +845,7 @@ export type Opportunity = {
   probability: number | null;
   expected_closed_at: string | null;
   assigned_to: string | null;
+  product: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -815,6 +860,75 @@ export type CreateOpportunity = {
   probability?: number;
   expected_closed_at?: string;
   assigned_to?: string;
+  product?: string;
+};
+
+export type OpportunityProductHistory = {
+  id: string;
+  product: string;
+  changed_by: string | null;
+  created_at: string;
+};
+
+// LeadSquared-style opportunity row — same shape the UI's `Opp` interface uses.
+// Kept loose here so lib/api stays decoupled from component types.
+export type UiOpp = Record<string, unknown> & { id: string };
+
+export type OppReferenceData = {
+  OWNERS: { name: string; email: string }[];
+  STATUSES: string[];
+  STAGES: string[];
+  BROAD_PRODUCTS: string[];
+  COMPANIES: string[];
+  TASK_TYPES: { group: string; items: string[] }[];
+  ACTIVITY_TYPES: string[];
+};
+
+// ── Access Control (RBAC) ──
+export type PermAction = "read" | "write" | "edit" | "delete";
+
+export type ModulePermissions = Record<PermAction, boolean>;
+
+export type AccessModule = { key: string; label: string };
+
+export type MyPermissions = {
+  user_id: string;
+  role: string;
+  is_admin: boolean;
+  permissions: Record<string, ModulePermissions>;
+};
+
+export type GroupPermissionRow = {
+  module: string;
+  can_read: boolean;
+  can_write: boolean;
+  can_edit: boolean;
+  can_delete: boolean;
+};
+
+export type AccessGroup = {
+  id: string;
+  name: string;
+  description: string;
+  is_system: boolean;
+  member_count: number;
+  permissions: (GroupPermissionRow & { id: string; group_id: string })[];
+  created_at: string;
+  updated_at: string;
+};
+
+export type UserPermissionOverride = {
+  module: string;
+  can_read: boolean | null;
+  can_write: boolean | null;
+  can_edit: boolean | null;
+  can_delete: boolean | null;
+};
+
+export type UserPermissionProfile = {
+  user: { id: string; name: string; email: string; role: string; group_id: string | null };
+  overrides: UserPermissionOverride[];
+  effective: Record<string, ModulePermissions>;
 };
 
 export type PipelineStage = {

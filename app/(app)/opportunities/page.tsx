@@ -1,7 +1,10 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
+import { api } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -29,6 +32,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
+import { useCan } from "@/components/auth/permission-provider";
 import {
   Search,
   Plus,
@@ -101,6 +105,9 @@ const CONTACT_FIELDS = ["Call Back", "camp_name", "Channel source", "City", "Con
 export default function OpportunitiesPage() {
   const [opps, setOpps] = useState<Opp[]>(OPPS);
   const [activeType, setActiveType] = useState<(typeof TYPES)[number]["id"]>("Product Opportunity");
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const qc = useQueryClient();
 
   // filters
   const [search, setSearch] = useState("");
@@ -118,6 +125,9 @@ export default function OpportunitiesPage() {
 
   // drawers / dialogs
   const [adding, setAdding] = useState(false);
+  const canWrite = useCan("opportunities", "write");
+  const canEdit = useCan("opportunities", "edit");
+  const canDelete = useCan("opportunities", "delete");
   const [editTarget, setEditTarget] = useState<Opp | null>(null);
   const [taskTarget, setTaskTarget] = useState<Opp | null>(null);
   const [preview, setPreview] = useState<Opp | null>(null);
@@ -195,7 +205,60 @@ export default function OpportunitiesPage() {
       return n;
     });
     if (preview?.id === id) setPreview(null);
+    api.opportunities.ui.delete(id).catch(() => {});
   };
+
+  /* ---- load via the query cache: instant on revisit, fetch once when stale ---- */
+  useEffect(() => {
+    let cancelled = false;
+    qc.fetchQuery({
+      queryKey: ["ui-opps"],
+      queryFn: () => api.opportunities.ui.list(),
+      staleTime: 60 * 1000, // cached <60s → resolves instantly, zero network
+    })
+      .then((rows) => {
+        if (!cancelled && Array.isArray(rows) && rows.length) setOpps(rows as unknown as Opp[]);
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [qc]);
+
+  /* Keep the cache in sync with local edits so the next visit is instant + fresh. */
+  useEffect(() => {
+    if (opps !== OPPS && opps.length) qc.setQueryData(["ui-opps"], opps as never);
+  }, [opps, qc]);
+
+  /* ---- deep link: ?opp=<id> opens a record; ?lead=<id> opens its opp ---- */
+  useEffect(() => {
+    const oppId = searchParams.get("opp");
+    const leadId = searchParams.get("lead");
+    if (!oppId && !leadId) return;
+
+    let cancelled = false;
+    const openOpp = (o: Opp) => {
+      if (cancelled || !o) return;
+      setOpps((s) => (s.some((x) => x.id === o.id) ? s.map((x) => (x.id === o.id ? o : x)) : [o, ...s]));
+      if (o.type) setActiveType(o.type as (typeof TYPES)[number]["id"]);
+      setPreview(o);
+    };
+
+    if (oppId) {
+      api.opportunities.ui.get(oppId).then((o) => openOpp(o as unknown as Opp)).catch(() => {});
+    } else if (leadId) {
+      api.opportunities.ui
+        .ensureForLead({
+          lead_id: leadId,
+          name: searchParams.get("name") || undefined,
+          product: searchParams.get("product") || undefined,
+        })
+        .then((res) => openOpp(res.data as unknown as Opp))
+        .catch(() => {});
+    }
+    // Clear params so re-renders don't reopen, keeping the URL clean.
+    router.replace("/opportunities");
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
 
   /* ---------------------------------------------------------------- */
   return (
@@ -244,9 +307,11 @@ export default function OpportunitiesPage() {
             </button>
           </h1>
           <div className="flex items-center gap-2">
-            <Button onClick={() => setAdding(true)}>
-              <Plus className="h-4 w-4" /> Add Opportunity
-            </Button>
+            {canWrite && (
+              <Button onClick={() => setAdding(true)}>
+                <Plus className="h-4 w-4" /> Add Opportunity
+              </Button>
+            )}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon"><MoreVertical className="h-5 w-5" /></Button>
@@ -402,11 +467,13 @@ export default function OpportunitiesPage() {
                     </td>
                     <td className="px-3 py-3">
                       <div className="flex items-center justify-center gap-1 text-muted-foreground">
-                        <IconBtn title="Edit" onClick={() => setEditTarget(o)}><Edit2 className="h-4 w-4" /></IconBtn>
+                        {canEdit && <IconBtn title="Edit" onClick={() => setEditTarget(o)}><Edit2 className="h-4 w-4" /></IconBtn>}
                         <IconBtn title="Add Task" onClick={() => setTaskTarget(o)}><CalendarPlus className="h-4 w-4" /></IconBtn>
-                        <IconBtn title="Duplicate" onClick={() => { setOpps((s) => [{ ...o, id: `${o.id}-c`, name: `${o.name} (copy)` }, ...s]); toast.success("Duplicated"); }}><Copy className="h-4 w-4" /></IconBtn>
+                        {canWrite && <IconBtn title="Duplicate" onClick={() => { setOpps((s) => [{ ...o, id: `${o.id}-c`, name: `${o.name} (copy)` }, ...s]); toast.success("Duplicated"); }}><Copy className="h-4 w-4" /></IconBtn>}
                         <RowMenu
                           opp={o}
+                          canEdit={canEdit}
+                          canDelete={canDelete}
                           onEdit={() => setEditTarget(o)}
                           onAddTask={() => setTaskTarget(o)}
                           onAddActivity={() => toast.success(`Activity added to ${o.name}`)}
@@ -506,23 +573,22 @@ export default function OpportunitiesPage() {
         open={adding}
         onClose={() => setAdding(false)}
         onSave={(data) => {
-          const id = `n-${Date.now() % 100000}`;
+          const id = crypto.randomUUID();
           const now = new Date().toISOString().slice(0, 19);
           const owner = OWNERS[0];
-          setOpps((s) => [
-            {
-              id, name: data.name, status: data.status ?? "Open - Not Connected", stage: data.stage ?? "Prospect",
-              type: activeType, diyFlag: "No", upsale: "New", createdOn: now, agentAssigned: now,
-              noOfAttempts: 0, noOfConnects: 0, ownerUpdate: now.replace("T", " "), owner: owner.name, ownerEmail: owner.email,
-              contactName: data.name, phone: data.phone ?? "", email: data.email ?? "", company: data.company ?? "Stoxkart",
-              broadProduct: data.broadProduct ?? "STX Trading Account", source: "STX Trading Account", callStatus: "--",
-              talismaId: "--", opportunityId: String(16000000 + (Date.now() % 100000)),
-            },
-            ...s,
-          ]);
+          const newOpp: Opp = {
+            id, name: data.name, status: data.status ?? "Open - Not Connected", stage: data.stage ?? "Prospect",
+            type: activeType, diyFlag: "No", upsale: "New", createdOn: now, agentAssigned: now,
+            noOfAttempts: 0, noOfConnects: 0, ownerUpdate: now.replace("T", " "), owner: owner.name, ownerEmail: owner.email,
+            contactName: data.name, phone: data.phone ?? "", email: data.email ?? "", company: data.company ?? "Stoxkart",
+            broadProduct: data.broadProduct ?? "STX Trading Account", source: "STX Trading Account", callStatus: "--",
+            talismaId: "--", opportunityId: String(16000000 + (Date.now() % 100000)),
+          };
+          setOpps((s) => [newOpp, ...s]);
           setAdding(false);
           setPage(1);
           toast.success(`Created "${data.name}"`);
+          api.opportunities.ui.create(newOpp as never).catch(() => {});
         }}
       />
 
@@ -538,10 +604,12 @@ export default function OpportunitiesPage() {
         opp={editTarget}
         onClose={() => setEditTarget(null)}
         onSave={(patch) => {
-          setOpps((s) => s.map((x) => (x.id === editTarget!.id ? { ...x, ...patch } : x)));
-          if (preview?.id === editTarget!.id) setPreview({ ...preview, ...patch } as Opp);
+          const id = editTarget!.id;
+          setOpps((s) => s.map((x) => (x.id === id ? { ...x, ...patch } : x)));
+          if (preview?.id === id) setPreview({ ...preview, ...patch } as Opp);
           setEditTarget(null);
           toast.success("Saved");
+          api.opportunities.ui.update(id, patch as never).catch(() => {});
         }}
       />
 
@@ -554,9 +622,11 @@ export default function OpportunitiesPage() {
         options={OWNERS.map((o) => o.name)}
         onClose={() => setOwnerDialog(null)}
         onSave={(v) => {
-          setOpps((s) => s.map((x) => (x.id === ownerDialog!.id ? { ...x, owner: v } : x)));
+          const id = ownerDialog!.id;
+          setOpps((s) => s.map((x) => (x.id === id ? { ...x, owner: v } : x)));
           toast.success(`Owner → ${v}`);
           setOwnerDialog(null);
+          api.opportunities.ui.update(id, { owner: v } as never).catch(() => {});
         }}
       />
 
@@ -572,9 +642,11 @@ export default function OpportunitiesPage() {
         secondOptions={STAGES}
         onClose={() => setStatusDialog(null)}
         onSave={(v, v2) => {
-          setOpps((s) => s.map((x) => (x.id === statusDialog!.id ? { ...x, status: v, stage: v2 ?? x.stage } : x)));
+          const id = statusDialog!.id;
+          setOpps((s) => s.map((x) => (x.id === id ? { ...x, status: v, stage: v2 ?? x.stage } : x)));
           toast.success(`Status → ${v}`);
           setStatusDialog(null);
+          api.opportunities.ui.update(id, { status: v, ...(v2 ? { stage: v2 } : {}) } as never).catch(() => {});
         }}
       />
 
@@ -617,6 +689,7 @@ function IconBtn({ title, onClick, children }: { title: string; onClick: () => v
 
 function RowMenu({
   opp, onEdit, onAddActivity, onAddTask, onChangeOwner, onChangeStatus, onDelete,
+  canEdit = true, canDelete = true,
 }: {
   opp: Opp;
   onEdit: () => void;
@@ -625,6 +698,8 @@ function RowMenu({
   onChangeOwner: () => void;
   onChangeStatus: () => void;
   onDelete: () => void;
+  canEdit?: boolean;
+  canDelete?: boolean;
 }) {
   return (
     <DropdownMenu>
@@ -632,13 +707,13 @@ function RowMenu({
         <button className="p-1.5 rounded hover:bg-secondary hover:text-foreground transition-colors" title="More"><MoreHorizontal className="h-4 w-4" /></button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-48">
-        <DropdownMenuItem onClick={onEdit}><Edit2 className="h-4 w-4" /> Edit</DropdownMenuItem>
+        {canEdit && <DropdownMenuItem onClick={onEdit}><Edit2 className="h-4 w-4" /> Edit</DropdownMenuItem>}
         <DropdownMenuItem onClick={onAddActivity}><ActivityIcon className="h-4 w-4" /> Add Activity</DropdownMenuItem>
         <DropdownMenuItem onClick={onAddTask}><CalendarPlus className="h-4 w-4" /> Add Task</DropdownMenuItem>
-        <DropdownMenuItem onClick={onChangeOwner}><UserCog className="h-4 w-4" /> Change Owner</DropdownMenuItem>
-        <DropdownMenuItem onClick={onChangeStatus}><ArrowRightLeft className="h-4 w-4" /> Change Status/Stage</DropdownMenuItem>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={onDelete} className="text-destructive focus:text-destructive"><Trash2 className="h-4 w-4" /> Delete</DropdownMenuItem>
+        {canEdit && <DropdownMenuItem onClick={onChangeOwner}><UserCog className="h-4 w-4" /> Change Owner</DropdownMenuItem>}
+        {canEdit && <DropdownMenuItem onClick={onChangeStatus}><ArrowRightLeft className="h-4 w-4" /> Change Status/Stage</DropdownMenuItem>}
+        {canDelete && <DropdownMenuSeparator />}
+        {canDelete && <DropdownMenuItem onClick={onDelete} className="text-destructive focus:text-destructive"><Trash2 className="h-4 w-4" /> Delete</DropdownMenuItem>}
       </DropdownMenuContent>
     </DropdownMenu>
   );

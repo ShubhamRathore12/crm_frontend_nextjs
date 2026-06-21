@@ -25,22 +25,24 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
+import { usePermissions } from "@/components/auth/permission-provider";
 
 const nav = [
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/inbox", label: "Inbox", icon: InboxIcon },
-  { href: "/calendar", label: "Calendar", icon: CalendarIcon },
-  { href: "/leads", label: "Leads", icon: UserPlus },
-  { href: "/opportunities", label: "Opportunities", icon: Target },
-  { href: "/lists", label: "Lists", icon: ListIcon },
+  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, module: "dashboard" },
+  { href: "/inbox", label: "Inbox", icon: InboxIcon, module: "inbox" },
+  { href: "/calendar", label: "Calendar", icon: CalendarIcon, module: "calendar" },
+  { href: "/leads", label: "Leads", icon: UserPlus, module: "leads" },
+  { href: "/opportunities", label: "Opportunities", icon: Target, module: "opportunities" },
+  { href: "/lists", label: "Lists", icon: ListIcon, module: "contacts" },
 
-  { href: "/interactions", label: "Interactions", icon: MessageSquare },
-  { href: "/workflows", label: "Workflows", icon: GitBranch },
-  { href: "/campaigns", label: "Campaigns", icon: Megaphone },
-  { href: "/reports", label: "Reports", icon: BarChart3 },
-  { href: "/sales-marketing", label: "Sales & Marketing", icon: Target },
-  { href: "/admin", label: "Admin", icon: Shield },
-  { href: "/settings", label: "Settings", icon: Settings },
+  { href: "/interactions", label: "Interactions", icon: MessageSquare, module: "interactions" },
+  { href: "/workflows", label: "Workflows", icon: GitBranch, module: "workflows" },
+  { href: "/campaigns", label: "Campaigns", icon: Megaphone, module: "campaigns" },
+  { href: "/reports", label: "Reports", icon: BarChart3, module: "reports" },
+  { href: "/sales-marketing", label: "Sales & Marketing", icon: Target, module: "sales_marketing" },
+  { href: "/admin", label: "Admin", icon: Shield, module: "users" },
+  { href: "/settings/access-control", label: "Access Control", icon: Shield, module: "access_control" },
+  { href: "/settings", label: "Settings", icon: Settings, module: "settings" },
 ];
 
 // Detail pages (e.g. /leads/<id>) need the room — auto-collapse the rail there.
@@ -54,6 +56,8 @@ function isDetailRoute(pathname: string) {
 export function AppSidebar() {
   const pathname = usePathname();
   const router = useRouter();
+  const { can } = usePermissions();
+  const visibleNav = nav.filter((item) => can(item.module, "read"));
   const [mobileOpen, setMobileOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
   const [hovered, setHovered] = useState(false);
@@ -117,7 +121,7 @@ export function AppSidebar() {
       </div>
 
       <nav className="flex-1 p-2 space-y-0.5 overflow-y-auto overflow-x-hidden">
-        {nav.map((item) => {
+        {visibleNav.map((item) => {
           const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
           return (
             <Link

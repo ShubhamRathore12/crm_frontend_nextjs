@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Drawer } from "./drawer";
+import { api, type OpportunityProductHistory } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -268,6 +269,7 @@ export function EditOpportunityDrawer({
 }) {
   const [form, setForm] = useState<Opp | null>(opp);
   const [lastId, setLastId] = useState<string | null>(null);
+  const [history, setHistory] = useState<OpportunityProductHistory[]>([]);
 
   // re-seed form when a different opp opens
   if (open && opp && opp.id !== lastId) {
@@ -275,6 +277,29 @@ export function EditOpportunityDrawer({
     setForm(opp);
   }
   if (!open && lastId !== null) setLastId(null);
+
+  // Load product-change history from the backend (latest first) when the
+  // opportunity has a real backend UUID. Mock rows are skipped silently.
+  const oppId = opp?.opportunityId ?? "";
+  const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(oppId);
+  useEffect(() => {
+    if (!open || !isUuid) {
+      setHistory([]);
+      return;
+    }
+    let cancelled = false;
+    api.opportunities
+      .productHistory(oppId)
+      .then((rows) => {
+        if (!cancelled) setHistory(Array.isArray(rows) ? rows : []);
+      })
+      .catch(() => {
+        if (!cancelled) setHistory([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [open, oppId, isUuid]);
 
   if (!form) {
     return <Drawer open={open} onClose={onClose} title="Edit"><div /></Drawer>;
@@ -337,6 +362,22 @@ export function EditOpportunityDrawer({
               </Select>
             </Field>
           </div>
+
+          {history.length > 0 && (
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium">Product History (latest first)</label>
+              <ul className="rounded-md border border-input divide-y divide-border text-sm">
+                {history.map((h) => (
+                  <li key={h.id} className="flex items-center justify-between px-3 py-2">
+                    <span>{h.product}</span>
+                    <span className="text-xs text-muted-foreground">
+                      {new Date(h.created_at).toLocaleString()}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </Section>
 
         <Section title="Status & Owner">

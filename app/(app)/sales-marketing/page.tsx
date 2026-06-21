@@ -8,6 +8,7 @@ import { CalendarView } from "@/components/sales-marketing/calendar-view";
 import { FormsView } from "@/components/sales-marketing/forms-view";
 import { TaskDetailModal } from "@/components/sales-marketing/task-detail-modal";
 import { Button } from "@/components/ui/button";
+import { useCan } from "@/components/auth/permission-provider";
 import {
   LayoutGrid,
   Table2,
@@ -30,6 +31,7 @@ const tabs: { key: TabKey; label: string; icon: React.ElementType }[] = [
 ];
 
 export default function SalesMarketingPage() {
+  const canWrite = useCan("sales_marketing", "write");
   const [activeTab, setActiveTab] = useState<TabKey>("board");
   const [tasks, setTasks] = useState<SalesTask[]>([]);
   const [loading, setLoading] = useState(true);
@@ -97,9 +99,11 @@ export default function SalesMarketingPage() {
             <Button onClick={loadTasks} variant="outline" size="sm" className="gap-1.5">
               <RefreshCw className={cn("h-3.5 w-3.5", loading && "animate-spin")} /> <span className="hidden sm:inline">Refresh</span>
             </Button>
-            <Button onClick={() => handleCreateClick()} size="sm" className="gap-1.5">
-              <Plus className="h-3.5 w-3.5" /> New Task
-            </Button>
+            {canWrite && (
+              <Button onClick={() => handleCreateClick()} size="sm" className="gap-1.5">
+                <Plus className="h-3.5 w-3.5" /> New Task
+              </Button>
+            )}
           </div>
         </div>
 
